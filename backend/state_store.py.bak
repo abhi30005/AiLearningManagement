@@ -227,31 +227,56 @@ def _mongo_collection():
 
 def _save_unlocked(state: dict[str, Any]) -> None:
     collection = _mongo_collection()
-    if collection is None:
-        raise Exception("MongoDB is required but not connected.")
-    collection.update_one(
-        {"_id": STATE_DOC_ID},
-        {"$set": {"state": state, "updatedAt": _now_iso()}},
-        upsert=True,
-    )
+    if collection is not None:
+        collection.update_one(
+            {"_id": STATE_DOC_ID},
+            {"$set": {"state": state, "updatedAt": _now_iso()}},
+            upsert=True,
+        )
+        return
+
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = STATE_FILE.with_suffix(".tmp")
+    tmp_file.write_text(json.dumps(state, ensure_ascii=True, indent=2), encoding="utf-8")
+    tmp_file.replace(STATE_FILE)
 
 
 def _load_unlocked() -> dict[str, Any]:
     collection = _mongo_collection()
-    if collection is None:
-        raise Exception("MongoDB is required but not connected.")
-        
-    document = collection.find_one({"_id": STATE_DOC_ID})
-    if document and isinstance(document.get("state"), dict):
-        raw = document["state"]
-    else:
+    if collection is not None:
+        document = collection.find_one({"_id": STATE_DOC_ID})
+        if document and isinstance(document.get("state"), dict):
+            raw = document["state"]
+        else:
+            raw = _default_state()
+            collection.update_one(
+                {"_id": STATE_DOC_ID},
+                {"$set": {"state": raw, "updatedAt": _now_iso()}},
+                upsert=True,
+            )
+        raw.setdefault("users", [])
+        raw.setdefault("courses", [])
+        raw.setdefault("enrollments", [])
+        raw.setdefault("assignments", [])
+        raw.setdefault("submissions", [])
+        raw.setdefault("materials", [])
+        raw.setdefault("chatHistory", [])
+        raw.setdefault("notifications", [])
+        raw.setdefault("notes", [])
+        raw.setdefault("flashcards", [])
+        raw.setdefault("settings", {})
+        return raw
+
+    if not STATE_FILE.exists():
+        state = _default_state()
+        _save_unlocked(state)
+        return state
+    try:
+        raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
         raw = _default_state()
-        collection.update_one(
-            {"_id": STATE_DOC_ID},
-            {"$set": {"state": raw, "updatedAt": _now_iso()}},
-            upsert=True,
-        )
-        
+        _save_unlocked(raw)
+    raw.setdefault("users", [])
     raw.setdefault("courses", [])
     raw.setdefault("enrollments", [])
     raw.setdefault("assignments", [])
@@ -263,7 +288,6 @@ def _load_unlocked() -> dict[str, Any]:
     raw.setdefault("flashcards", [])
     raw.setdefault("settings", {})
     return raw
-
 
 
 def _role_tier(role: str) -> str:

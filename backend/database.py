@@ -30,9 +30,15 @@ def get_database():
 def get_database_status():
     client = get_mongo_client()
     if client is None:
-        return {"database": "json-fallback", "connected": False}
+        return {"database": "disconnected", "connected": False}
     try:
         client.admin.command("ping")
         return {"database": "mongodb", "connected": True, "name": settings.MONGODB_DB}
     except Exception:
-        return {"database": "json-fallback", "connected": False, "name": settings.MONGODB_DB}
+        return {"database": "disconnected", "connected": False, "name": settings.MONGODB_DB}
+
+def get_collection(name: str):
+    db = get_database()
+    if db is None:
+        raise Exception("Database not connected")
+    return db[name]

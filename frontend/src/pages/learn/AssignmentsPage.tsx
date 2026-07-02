@@ -28,7 +28,7 @@ export default function AssignmentsPage() {
       try {
         const [asgRes, subRes] = await Promise.all([
           apiFetch<any>('/assessments/assignments'),
-          apiFetch<any>(`/assessments/submissions?user_id=${user?.uid || ''}`)
+          apiFetch<any>(`/assessments/submissions?user_id=${user?.id || ''}`)
         ])
         
         const allAssignments = asgRes.assignments || []
@@ -61,7 +61,7 @@ export default function AssignmentsPage() {
       }
     }
     
-    if (user?.uid) {
+    if (user?.id) {
       fetchAssignments()
     }
   }, [user])

@@ -163,24 +163,16 @@ export default function AdminDashboard() {
           <div className="flex items-center">
             <ResponsiveContainer width="50%" height={250}>
               <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
+                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                {categoryData.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-2">
-              {categoryData.map((item, index) => (
+              {categoryData.map((item: any, index: number) => (
                 <div key={index} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="text-sm text-secondary-600">{item.name}</span>

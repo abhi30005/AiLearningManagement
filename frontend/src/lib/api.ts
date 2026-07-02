@@ -1,33 +1,20 @@
-import { auth } from './firebase';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-
-  if (auth.currentUser) {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      headers['Authorization'] = `Bearer ${token}`;
-    } catch (e) {
-      console.error("Error getting Firebase token", e);
-    }
-  }
-
-  return headers;
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const headers = await getAuthHeaders();
+  const headers = new Headers(options.headers);
   
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      ...headers,
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {

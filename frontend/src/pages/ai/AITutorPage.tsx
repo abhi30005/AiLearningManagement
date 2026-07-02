@@ -57,8 +57,8 @@ export default function AITutorPage() {
   }, [messages])
 
   useEffect(() => {
-    if (user?.uid) {
-      apiFetch<any>(`/tutor/history/${user.uid}`).then(res => {
+    if (user?.id) {
+      apiFetch<any>(`/tutor/history/${user.id}`).then(res => {
         if (res.history) {
           // Format for sidebar
           const formatted = res.history.map((h: any) => ({
@@ -91,7 +91,7 @@ export default function AITutorPage() {
       const res = await apiFetch<any>('/tutor/chat', {
         method: 'POST',
         body: JSON.stringify({
-          user_id: user?.uid || 'guest',
+          user_id: user?.id || 'guest',
           message: userMessage.content,
           document_id: 'general',
           language: language

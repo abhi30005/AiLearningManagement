@@ -277,7 +277,7 @@ function AITutorChat() {
       const res = await apiFetch<any>('/tutor/chat', {
         method: 'POST',
         body: JSON.stringify({
-          user_id: user?.uid || 'guest',
+          user_id: user?.id || 'guest',
           message: userMsg,
           document_id: 'lesson_context',
           language: language

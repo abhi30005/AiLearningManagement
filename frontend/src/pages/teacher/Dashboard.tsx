@@ -26,7 +26,7 @@ export default function TeacherDashboard() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const teacherId = user?.uid || 'current' 
+        const teacherId = user?.id || 'current' 
         const result = await apiFetch<any>(`/analytics/teacher/${teacherId}`)
         setData(result)
       } catch (error) {

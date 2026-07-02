@@ -38,9 +38,9 @@ export default function ProfilePage() {
   const [loading, setSaving] = useState(false)
 
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.id) {
       // Fetch settings
-      apiFetch<any>(`/users/${user.uid}/settings`).then(res => {
+      apiFetch<any>(`/users/${user.id}/settings`).then(res => {
         if (res?.settings) {
           setNotifications(prev => ({ ...prev, ...res.settings.notifications }))
         }
@@ -52,8 +52,8 @@ export default function ProfilePage() {
     setSaving(true)
     try {
       await updateProfile({ full_name: fullName })
-      if (user?.uid) {
-        await apiFetch(`/users/${user.uid}/settings`, {
+      if (user?.id) {
+        await apiFetch(`/users/${user.id}/settings`, {
           method: 'PUT',
           body: JSON.stringify({ notifications })
         })

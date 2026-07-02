@@ -10,7 +10,8 @@ python-dotenv
 pymongo
 
 # Authentication
-firebase-admin
+pyjwt
+passlib[bcrypt]
 
 # AI & RAG
 openai

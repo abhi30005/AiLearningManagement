@@ -26,7 +26,7 @@ export default function StudentDashboard() {
     const fetchAnalytics = async () => {
       try {
         // We use user?.id or a default string so the backend can resolve it
-        const studentId = user?.uid || 'current' 
+        const studentId = user?.id || 'current' 
         const result = await apiFetch<any>(`/analytics/student/${studentId}`)
         setData(result)
       } catch (error) {
