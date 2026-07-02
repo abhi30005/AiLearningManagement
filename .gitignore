@@ -57,3 +57,11 @@ frontend/.local/
 .DS_Store
 Thumbs.db
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+backend/lms.db
+
+# Logs
+backend/.logs/

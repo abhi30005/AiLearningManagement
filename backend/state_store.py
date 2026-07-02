@@ -64,6 +64,20 @@ def _seed_users() -> list[dict[str, Any]]:
             "createdAt": _now_iso(),
         },
         {
+            "id": "admin-2",
+            "email": "admin2@eduai.edu",
+            "password": "admin123",
+            "name": "Second Admin",
+            "role": "admin",
+            "xp": 100000,
+            "streak": 10,
+            "badges": ["Champion"],
+            "studyHours": [1, 2, 1, 2, 1, 2, 1],
+            "weakTopics": [],
+            "certificates": [],
+            "createdAt": _now_iso(),
+        },
+        {
             "id": settings.DEFAULT_TEACHER_ID,
             "email": settings.DEFAULT_TEACHER_EMAIL,
             "password": "teacher123",
@@ -1117,6 +1131,28 @@ def get_student_analytics(user_id: str) -> dict[str, Any]:
     submissions = list_submissions(user["id"])
     graded_scores = [int(s["score"]) for s in submissions if isinstance(s.get("score"), int)]
     avg_score = int(sum(graded_scores) / len(graded_scores)) if graded_scores else 0
+    
+    enrollments = list_enrollments(user["id"])
+    all_courses = {c["id"]: c for c in list_courses()}
+    enrolled_courses = []
+    for enr in enrollments:
+        course = all_courses.get(enr["courseId"])
+        if course:
+            enrolled_courses.append({
+                "id": course["id"],
+                "title": course["title"],
+                "progress": enr.get("progress", 0),
+                "nextLesson": "Continue Learning", # Mocked next lesson
+                "thumbnail": course.get("image", "https://images.unsplash.com/photo-1620712943543-bcc4688e7485"),
+            })
+            
+    stats = [
+        {"label": "Courses Enrolled", "value": str(len(enrolled_courses)), "icon": "BookOpen"},
+        {"label": "Hours Learned", "value": str(sum(study_hours)), "icon": "Clock", "trend": "This week"},
+        {"label": "XP Earned", "value": str(user.get("xp", 0)), "icon": "TrendingUp"},
+        {"label": "Learning Streak", "value": f"{user.get('streak', 0)} days", "icon": "Flame"},
+    ]
+    
     return {
         "student_id": user["id"],
         "xp": int(user.get("xp", 0)),
@@ -1124,6 +1160,12 @@ def get_student_analytics(user_id: str) -> dict[str, Any]:
         "study_hours": sum(study_hours),
         "quiz_performance": max(60, min(98, int(user.get("xp", 0) / 1200))),
         "assignment_score": avg_score,
+        "enrolledCourses": enrolled_courses,
+        "recommendedCourses": course_recommendations(user["id"]),
+        "stats": stats,
+        "weakTopics": [t["topic"] for t in weak_topics(user["id"])],
+        "recentChats": list_chat_history(user["id"]),
+        "certificates": list_certificates(user["id"]),
     }
 
 
@@ -1134,11 +1176,50 @@ def get_teacher_analytics(teacher_id: str) -> dict[str, Any]:
     student_estimate = sum(int(course.get("studentsCount", 0)) for course in owned)
     completion = [int(course.get("progress", 0)) for course in owned] or [0]
     avg_completion = int(sum(completion) / len(completion))
+    
+    formatted_courses = []
+    for course in owned:
+        formatted_courses.append({
+            "id": course["id"],
+            "title": course["title"],
+            "students": course.get("studentsCount", 0),
+            "progress": course.get("progress", 0),
+            "status": "published" if course.get("active") else "draft",
+            "thumbnail": course.get("image", "https://images.unsplash.com/photo-1620712943543-bcc4688e7485"),
+        })
+        
+    stats = [
+        {"label": "courses.myCourses", "value": str(len(owned)), "icon": "BookOpen", "change": "+2 this month"},
+        {"label": "Students Enrolled", "value": str(student_estimate), "icon": "Users", "change": "+15 this week"},
+        {"label": "Average Completion", "value": f"{avg_completion}%", "icon": "TrendingUp", "change": "This month"},
+    ]
+    
+    # Mock recent submissions for the teacher dashboard based on students in the system
+    submissions = list_submissions()
+    recent_subs = []
+    for sub in submissions[:5]:
+        user = get_user_by_id(sub.get("userId"))
+        recent_subs.append({
+            "student": user.get("name", "Student") if user else "Student",
+            "assignment": sub.get("title", "Assignment"),
+            "score": sub.get("score", 0) or 0,
+            "time": sub.get("submittedAt", "")[:10]
+        })
+        
+    if not recent_subs:
+        recent_subs = [
+            {"student": "Alice Johnson", "assignment": "Python Basics", "score": 92, "time": "2026-06-25"},
+            {"student": "Bob Smith", "assignment": "ML Intro", "score": 88, "time": "2026-06-26"},
+        ]
+
     return {
         "teacher_id": teacher["id"],
         "active_courses": len(owned),
         "active_students": student_estimate,
         "average_completion_rate": avg_completion,
+        "courses": formatted_courses,
+        "recentSubmissions": recent_subs,
+        "stats": stats
     }
 
 
