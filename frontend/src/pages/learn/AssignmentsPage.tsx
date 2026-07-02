@@ -96,12 +96,7 @@ export default function AssignmentsPage() {
     }
   }
 
-  const getDaysRemaining = (dueDate: string) => {
-    const due = new Date(dueDate)
-    const now = new Date()
-    const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
-  }
+
 
   return (
     <div className="space-y-6">
