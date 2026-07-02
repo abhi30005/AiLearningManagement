@@ -1,0 +1,25 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+python-multipart
+websockets
+pydantic[email]
+python-dotenv
+
+# Database
+pymongo
+
+# Authentication
+firebase-admin
+
+# AI & RAG
+openai
+google-genai
+chromadb
+langchain
+langchain-openai
+langchain-community
+
+# Document & Media Processing
+PyMuPDF
+youtube-transcript-api

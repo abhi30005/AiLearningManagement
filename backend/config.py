@@ -1,0 +1,36 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def _default_user_id(email: str, role: str) -> str:
+    local = (email or role).split("@")[0].lower()
+    safe = "".join(ch if ch.isalnum() else "-" for ch in local).strip("-")
+    return f"{role}-{safe or role}"
+
+
+class Settings:
+    APP_NAME = os.getenv("APP_NAME", "Lumina AI-LMS")
+    MONGODB_URI = os.getenv("MONGODB_URI", "")
+    MONGODB_DB = os.getenv("MONGODB_DB", "lumina_lms")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    SECRET_KEY = os.getenv("SECRET_KEY", "secret")
+    ALGORITHM = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+    FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
+    CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+    DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@eduai.edu")
+    DEFAULT_TEACHER_EMAIL = os.getenv("DEFAULT_TEACHER_EMAIL", "teacher@eduai.edu")
+    DEFAULT_STUDENT_EMAIL = os.getenv("DEFAULT_STUDENT_EMAIL", "student@eduai.edu")
+    DEFAULT_ADMIN_ID = os.getenv("DEFAULT_ADMIN_ID", _default_user_id(DEFAULT_ADMIN_EMAIL, "admin"))
+    DEFAULT_TEACHER_ID = os.getenv("DEFAULT_TEACHER_ID", _default_user_id(DEFAULT_TEACHER_EMAIL, "teacher"))
+    DEFAULT_STUDENT_ID = os.getenv("DEFAULT_STUDENT_ID", _default_user_id(DEFAULT_STUDENT_EMAIL, "student"))
+    DEFAULT_ADMIN_NAME = os.getenv("DEFAULT_ADMIN_NAME", "Platform Admin")
+    DEFAULT_TEACHER_NAME = os.getenv("DEFAULT_TEACHER_NAME", "Course Teacher")
+    DEFAULT_STUDENT_NAME = os.getenv("DEFAULT_STUDENT_NAME", "Student User")
+    DEFAULT_STUDENT_WEAK_TOPICS = os.getenv("DEFAULT_STUDENT_WEAK_TOPICS", "")
+    SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "true").lower() in {"1", "true", "yes", "on"}
+    DEFAULT_COURSE_WEEKS = int(os.getenv("DEFAULT_COURSE_WEEKS", 8))
+    DEFAULT_API_PORT = int(os.getenv("DEFAULT_API_PORT", 8000))
+
+settings = Settings()
