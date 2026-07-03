@@ -9,7 +9,7 @@ Use these settings:
 ```text
 Root Directory: backend
 Build Command: pip install -r requirements.txt
-Start Command: uvicorn main:app --host 0.0.0.0 --port $PORT
+Start Command: python render_start.py
 Health Check Path: /health
 ```
 

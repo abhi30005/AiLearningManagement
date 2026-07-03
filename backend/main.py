@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from config import settings
 from database import get_database_status, wait_for_database
@@ -59,6 +59,10 @@ async def bootstrap_system_admin():
 async def root():
     return {"message": f"Welcome to the {settings.APP_NAME} API"}
 
+@app.head("/")
+async def root_head():
+    return Response(status_code=200)
+
 @app.get("/api/health")
 @app.get("/health")
 @app.get("/healthz")
@@ -68,6 +72,12 @@ async def health():
         "service": settings.APP_NAME,
         "version": app.version,
     }
+
+@app.head("/api/health")
+@app.head("/health")
+@app.head("/healthz")
+async def health_head():
+    return Response(status_code=200)
 
 @app.get("/ready")
 @app.get("/readyz")
@@ -81,3 +91,9 @@ async def readiness():
     if not database.get("connected"):
         return JSONResponse(status_code=503, content=payload)
     return payload
+
+@app.head("/ready")
+@app.head("/readyz")
+async def readiness_head():
+    database = get_database_status()
+    return Response(status_code=200 if database.get("connected") else 503)
