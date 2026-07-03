@@ -34,5 +34,8 @@ class Settings:
     SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "false").lower() in {"1", "true", "yes", "on"}
     DEFAULT_COURSE_WEEKS = int(os.getenv("DEFAULT_COURSE_WEEKS", 8))
     DEFAULT_API_PORT = int(os.getenv("DEFAULT_API_PORT", 8000))
+    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
+    ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", "")
+    CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() in {"1", "true", "yes", "on"}
 
 settings = Settings()

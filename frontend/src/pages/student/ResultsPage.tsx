@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth-context';
+import { apiFetch } from '../../lib/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Award, Target, BookOpen, Clock } from 'lucide-react';
 
@@ -12,7 +13,6 @@ export default function ResultsPage() {
     const fetchResults = async () => {
       if (!user) return;
       try {
-        const { apiFetch } = await import('../../lib/api');
         const data = await apiFetch<any>(`/analytics/student/${user.id}/results`);
         if (data && data.overview) {
           setResults(data);

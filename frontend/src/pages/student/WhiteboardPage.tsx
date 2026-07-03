@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Save, Download, Trash2, PenTool, Eraser, Upload, Sparkles, X, MessageSquare } from 'lucide-react';
 
 export default function WhiteboardPage() {
@@ -131,7 +132,6 @@ export default function WhiteboardPage() {
     setAiResponse('');
     
     try {
-      const { apiFetch } = await import('../../lib/api');
       const res = await apiFetch<any>('/ai-content/whiteboard-assist', {
         method: 'POST',
         body: JSON.stringify({ prompt: aiPrompt })

@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
 from config import settings
 from database import get_database_status
@@ -18,13 +17,14 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend communication
-allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "*")
+allowed_origins_raw = settings.ALLOWED_ORIGINS
 allowed_origins = [origin.strip() for origin in allowed_origins_raw.split(",") if origin.strip()]
-allow_credentials = "*" not in allowed_origins
+allow_credentials = settings.CORS_ALLOW_CREDENTIALS and "*" not in allowed_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins or ["*"],
+    allow_origin_regex=settings.ALLOWED_ORIGIN_REGEX or None,
     allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
