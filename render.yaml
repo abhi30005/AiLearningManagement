@@ -19,6 +19,12 @@ services:
         sync: false
       - key: MONGODB_DB
         value: lumina_lms
+      - key: MONGODB_TIMEOUT_MS
+        value: "10000"
+      - key: MONGODB_CONNECT_ATTEMPTS
+        value: "5"
+      - key: MONGODB_RETRY_DELAY_SECONDS
+        value: "2"
       - key: OPENAI_API_KEY
         sync: false
       - key: JWT_SECRET_KEY

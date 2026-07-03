@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from config import settings
-from database import get_database_status
+from database import get_database_status, wait_for_database
 from state_store import ensure_system_admin
 
 # Import routers
@@ -51,12 +52,32 @@ app.include_router(enrollments.router)
 
 @app.on_event("startup")
 async def bootstrap_system_admin():
+    wait_for_database()
     ensure_system_admin()
 
 @app.get("/")
 async def root():
     return {"message": f"Welcome to the {settings.APP_NAME} API"}
 
+@app.get("/api/health")
 @app.get("/health")
+@app.get("/healthz")
 async def health():
-    return {"status": "ok", **get_database_status()}
+    return {
+        "status": "ok",
+        "service": settings.APP_NAME,
+        "version": app.version,
+    }
+
+@app.get("/ready")
+@app.get("/readyz")
+async def readiness():
+    database = get_database_status()
+    payload = {
+        "status": "ok" if database.get("connected") else "degraded",
+        "service": settings.APP_NAME,
+        "database": database,
+    }
+    if not database.get("connected"):
+        return JSONResponse(status_code=503, content=payload)
+    return payload

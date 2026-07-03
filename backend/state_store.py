@@ -243,8 +243,6 @@ def _default_state() -> dict[str, Any]:
 
 def _mongo_collection():
     global _MONGO_AVAILABLE
-    if _MONGO_AVAILABLE is False:
-        return None
     try:
         db = get_database()
         if db is None:
