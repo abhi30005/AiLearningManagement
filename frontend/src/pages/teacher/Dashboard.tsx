@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../lib/language-context'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
+import { PageLoader } from '../../components/ui/PageLoader'
 import {
   BookOpen,
   Users,
@@ -39,11 +40,7 @@ export default function TeacherDashboard() {
   }, [user])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <PageLoader type="dashboard" />
   }
 
   const IconMap: Record<string, any> = {

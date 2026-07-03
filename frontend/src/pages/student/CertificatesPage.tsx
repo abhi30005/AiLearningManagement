@@ -5,6 +5,7 @@ import { Award, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { CertificateTemplate } from '../../components/CertificateTemplate';
+import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function CertificatesPage() {
   const { user } = useAuth();
@@ -79,11 +80,7 @@ export default function CertificatesPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <PageLoader type="list" />
   }
 
   return (

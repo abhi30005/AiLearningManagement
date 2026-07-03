@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
 import { ClipboardList, CheckCircle } from 'lucide-react'
+import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function TeacherAssignmentsPage() {
   const { user } = useAuth()
@@ -48,11 +49,7 @@ export default function TeacherAssignmentsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <PageLoader type="list" />
   }
 
   return (

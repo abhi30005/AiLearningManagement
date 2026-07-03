@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../lib/api'
+import { PageLoader } from '../../components/ui/PageLoader'
 import {
   BookOpen,
   Edit2,
@@ -58,11 +59,7 @@ export default function AdminCoursesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <PageLoader type="list" />
   }
 
   return (

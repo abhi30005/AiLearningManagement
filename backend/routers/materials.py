@@ -15,6 +15,7 @@ class ImageLinkRequest(BaseModel):
     url: str
     title: str = "Image Resource"
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 async def get_materials(course_id: str | None = None, chapter_id: str | None = None):
     return {"materials": list_materials(course_id=course_id, chapter_id=chapter_id)}

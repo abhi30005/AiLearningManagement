@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import { useLanguage } from '../../lib/language-context'
+import { PageLoader } from '../../components/ui/PageLoader'
 import {
   PlayCircle,
   Clock,
@@ -44,11 +45,7 @@ export default function CourseDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <PageLoader type="detail" />
   }
 
   if (!courseData) {

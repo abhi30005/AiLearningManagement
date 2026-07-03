@@ -15,6 +15,22 @@ Health Check Path: /health
 
 Do not use `--reload` on Render. `--reload` is only for local development.
 
+If Render logs show this, the dashboard is still using the old command:
+
+```text
+Running 'uvicorn main:app --reload'
+Uvicorn running on http://127.0.0.1:8000
+No open ports detected on 0.0.0.0
+```
+
+Fix it in Render:
+
+```text
+Service -> Settings -> Build & Deploy -> Start Command
+python render_start.py
+Save Changes -> Manual Deploy -> Clear build cache & deploy
+```
+
 Health endpoints:
 
 ```text

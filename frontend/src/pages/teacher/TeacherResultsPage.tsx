@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../lib/api'
 import { BarChart2, TrendingUp, Award } from 'lucide-react'
+import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function TeacherResultsPage() {
   const [submissions, setSubmissions] = useState<any[]>([])
@@ -21,11 +22,7 @@ export default function TeacherResultsPage() {
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <PageLoader type="list" />
   }
 
   // Calculate simple stats

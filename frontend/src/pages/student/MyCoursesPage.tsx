@@ -3,6 +3,7 @@ import { useAuth } from '../../lib/auth-context';
 import { apiFetch } from '../../lib/api';
 import { ChevronRight, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PageLoader } from '../../components/ui/PageLoader';
 
 export default function MyCoursesPage() {
   const { user } = useAuth();
@@ -38,11 +39,7 @@ export default function MyCoursesPage() {
   }, [user]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <PageLoader type="list" />;
   }
 
   return (

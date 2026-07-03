@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
 import { Plus, Edit2, Trash2, BookOpen } from 'lucide-react'
+import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function TeacherCoursesPage() {
   const { user } = useAuth()
@@ -35,11 +36,7 @@ export default function TeacherCoursesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <PageLoader type="list" />
   }
 
   return (

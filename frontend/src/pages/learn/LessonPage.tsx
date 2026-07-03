@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useLanguage } from '../../lib/language-context'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
+import { PageLoader } from '../../components/ui/PageLoader'
 import {
   Play,
   Pause,
@@ -66,11 +67,7 @@ export default function LessonPage() {
   const currentLesson = lessons[currentLessonIndex] || {}
 
   if (loading) {
-    return (
-      <div className="flex h-[calc(100vh-120px)] items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <PageLoader type="detail" />
   }
 
   return (
