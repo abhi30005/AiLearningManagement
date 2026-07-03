@@ -14,27 +14,39 @@ import {
   LayoutDashboard,
   ChevronDown,
   Globe,
+  PenTool,
+  BarChart2,
+  Award,
 } from 'lucide-react'
 import { useState } from 'react'
 
 const navItems = {
   admin: [
     { path: '/dashboard', icon: LayoutDashboard, label: 'dashboard' },
-    { path: '/admin/users', icon: Users, label: 'students' },
-    { path: '/courses', icon: BookOpen, label: 'courses' },
-    { path: '/admin/categories', icon: Settings, label: 'settings' },
+    { path: '/admin/students', icon: Users, label: 'students' },
+    { path: '/admin/teachers', icon: GraduationCap, label: 'teachers' },
+    { path: '/admin/courses', icon: BookOpen, label: 'courses' },
+    { path: '/admin/categories', icon: Settings, label: 'categories' },
+    { path: '/admin/enrollments', icon: ClipboardList, label: 'enrollments' },
   ],
   teacher: [
     { path: '/dashboard', icon: LayoutDashboard, label: 'dashboard' },
-    { path: '/courses', icon: BookOpen, label: 'courses' },
-    { path: '/assignments', icon: ClipboardList, label: 'assignments' },
-    { path: '/ai-tutor', icon: MessageSquare, label: 'aiTutor.title' },
+    { path: '/teacher/courses', icon: BookOpen, label: 'my courses' },
+    { path: '/teacher/students', icon: Users, label: 'students' },
+    { path: '/teacher/assignments', icon: ClipboardList, label: 'assignments' },
+    { path: '/teacher/quizzes', icon: Settings, label: 'quizzes' },
+    { path: '/teacher/results', icon: BarChart2, label: 'results' },
+    { path: '/teacher/materials', icon: BookOpen, label: 'course materials' },
   ],
   student: [
     { path: '/dashboard', icon: LayoutDashboard, label: 'dashboard' },
-    { path: '/courses', icon: BookOpen, label: 'courses' },
+    { path: '/my-courses', icon: BookOpen, label: 'my courses' },
+    { path: '/courses', icon: BookOpen, label: 'all courses' },
     { path: '/assignments', icon: ClipboardList, label: 'assignments' },
-    { path: '/ai-tutor', icon: MessageSquare, label: 'aiTutor.title' },
+    { path: '/ai-tutor', icon: MessageSquare, label: 'ai tutor' },
+    { path: '/whiteboard', icon: PenTool, label: 'whiteboard' },
+    { path: '/results', icon: BarChart2, label: 'results' },
+    { path: '/certificates', icon: Award, label: 'certificates' },
   ],
 }
 
@@ -103,7 +115,7 @@ export default function Layout() {
                     }
                   >
                     <item.icon className="w-5 h-5" />
-                    {t(`common.${item.label}`)}
+                    <span className="capitalize">{item.label.replace('aiTutor.title', 'AI Tutor').replace('ai tutor', 'AI Tutor')}</span>
                   </NavLink>
                 </li>
               ))}

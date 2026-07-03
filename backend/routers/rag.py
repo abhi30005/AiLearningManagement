@@ -4,9 +4,9 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 try:
-    from google import genai
+    import openai
 except ImportError:
-    genai = None
+    openai = None
 
 
 router = APIRouter(prefix="/rag", tags=["AI Knowledge Base (RAG)"])
@@ -36,10 +36,10 @@ class EmbeddingsRequest(BaseModel):
     text: str = ""
 
 
-def get_gemini_client():
-    key = os.environ.get("GEMINI_API_KEY")
-    if key and key != "MY_GEMINI_API_KEY" and genai:
-        return genai.Client(api_key=key)
+def get_openai_client():
+    key = os.environ.get("OPENAI_API_KEY")
+    if key and key != "MY_OPENAI_API_KEY" and openai:
+        return openai.OpenAI(api_key=key)
     return None
 
 
@@ -50,17 +50,14 @@ async def rag_query(req: QueryRequest):
         {"title": "Advanced Methods", "url": "#", "snippet": "Detailed methodology for applying these concepts."},
     ]
 
-    client = get_gemini_client()
+    client = get_openai_client()
     if client:
         try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=(
-                    f"You are an AI Tutor for course ID {req.courseId}. "
-                    f"Answer this student question concisely: {req.query}"
-                ),
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": f"You are an AI Tutor for course ID {req.courseId}. Answer this student question concisely: {req.query}"}],
             )
-            return {"answer": response.text, "citations": citations}
+            return {"answer": response.choices[0].message.content, "citations": citations}
         except Exception:
             pass
 
@@ -72,14 +69,14 @@ async def rag_query(req: QueryRequest):
 
 @router.post("/summarize-chapter")
 async def summarize_chapter(req: SummarizeRequest):
-    client = get_gemini_client()
+    client = get_openai_client()
     if client:
         try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=f"Provide a concise bullet-point summary for chapter ID {req.chapterId}.",
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": f"Provide a concise bullet-point summary for chapter ID {req.chapterId}."}]
             )
-            return {"summary": response.text}
+            return {"summary": response.choices[0].message.content}
         except Exception:
             pass
 

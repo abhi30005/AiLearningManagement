@@ -36,6 +36,8 @@ export default function QuizPage() {
   
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitResult, setSubmitResult] = useState<any>(null)
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -84,8 +86,24 @@ export default function QuizPage() {
     setAnswers({ ...answers, [question.id]: answer })
   }
 
-  const handleSubmit = () => {
-    setShowResult(true)
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    const score = calculateScore()
+    try {
+      const res = await apiFetch<any>('/assessments/submit-quiz', {
+        method: 'POST',
+        body: JSON.stringify({
+          courseId,
+          score,
+        })
+      })
+      setSubmitResult(res)
+    } catch(e) {
+      console.error(e)
+    } finally {
+      setIsSubmitting(false)
+      setShowResult(true)
+    }
   }
 
   const calculateScore = () => {
@@ -100,7 +118,7 @@ export default function QuizPage() {
 
   if (showResult) {
     const score = calculateScore()
-    const passed = score >= 60
+    const passed = score >= 75
 
     return (
       <div className="max-w-2xl mx-auto">
@@ -121,7 +139,7 @@ export default function QuizPage() {
           <p className="text-secondary-600 mb-6">
             {passed
               ? `You passed the quiz with a score of ${score}%!`
-              : `You scored ${score}%. You need 60% to pass.`}
+              : `You scored ${score}%. You need 75% to pass.`}
           </p>
 
           <div className="bg-secondary-50 rounded-xl p-6 mb-6">
@@ -131,11 +149,39 @@ export default function QuizPage() {
                 <p className="text-sm text-secondary-600">{t('quizzes.yourScore')}</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-secondary-900">60%</p>
+                <p className="text-3xl font-bold text-secondary-900">75%</p>
                 <p className="text-sm text-secondary-600">{t('quizzes.passScore')}</p>
               </div>
             </div>
           </div>
+          
+          {submitResult?.certificate && (
+            <div className="mb-6 p-6 border-2 border-accent-200 bg-accent-50 rounded-xl text-left">
+              <h3 className="text-lg font-bold text-accent-800 mb-2 flex items-center gap-2">
+                <Award className="w-5 h-5" /> 
+                Certificate Earned!
+              </h3>
+              <p className="text-sm text-accent-700 mb-1"><strong>Name:</strong> {submitResult.certificate.studentName}</p>
+              <p className="text-sm text-accent-700 mb-1"><strong>Course:</strong> {submitResult.certificate.courseName}</p>
+              <p className="text-sm text-accent-700"><strong>Date:</strong> {submitResult.certificate.date}</p>
+            </div>
+          )}
+
+          {submitResult?.badges?.length > 0 && (
+            <div className="mb-8 flex flex-col items-center">
+              <h4 className="text-sm font-semibold text-secondary-700 mb-3">Milestone Badges Unlocked</h4>
+              <div className="flex gap-4 justify-center">
+                {submitResult.badges.map((b: string, i: number) => (
+                  <div key={i} className="flex flex-col items-center bg-white p-3 rounded-lg border border-secondary-200 shadow-sm">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mb-2">
+                      <Award className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <span className="text-xs font-medium text-secondary-800">{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-center gap-4">
             <button
@@ -365,7 +411,10 @@ export default function QuizPage() {
         </div>
 
         {currentQuestion === questions.length - 1 ? (
-          <button onClick={handleSubmit} className="btn-primary">
+          <button onClick={handleSubmit} disabled={isSubmitting} className="btn-primary">
+            {isSubmitting ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            ) : null}
             {t('quizzes.submitQuiz')}
           </button>
         ) : (

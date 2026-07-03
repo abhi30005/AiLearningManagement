@@ -13,7 +13,10 @@ from state_store import (
     save_settings,
     update_user,
     update_user_role,
+    get_teacher_students,
+    admin_create_user,
 )
+from utils.security import decode_access_token
 
 
 router = APIRouter(prefix="/users", tags=["Authentication & User Management"])
@@ -38,10 +41,25 @@ class UserUpdateRequest(BaseModel):
     active: Optional[bool] = None
     department: Optional[str] = None
 
+class UserCreateRequest(BaseModel):
+    name: str
+    email: str
+    role: str
 
-def _resolve_user(default_user_id: Optional[str], email_header: Optional[str]) -> dict[str, Any]:
+
+def _resolve_user(
+    default_user_id: Optional[str],
+    email_header: Optional[str],
+    authorization_header: Optional[str] = None,
+) -> dict[str, Any]:
     if default_user_id:
         selected = get_user_by_id(default_user_id)
+        if selected:
+            return selected
+    if authorization_header and authorization_header.lower().startswith("bearer "):
+        token = authorization_header.split(" ", 1)[1]
+        payload = decode_access_token(token)
+        selected = get_user_by_id(payload.get("sub", ""))
         if selected:
             return selected
     if email_header:
@@ -52,14 +70,21 @@ def _resolve_user(default_user_id: Optional[str], email_header: Optional[str]) -
 
 
 @router.get("/me")
-async def get_me(x_user_email: Optional[str] = Header(default=None)):
-    return _resolve_user(default_user_id=None, email_header=x_user_email)
+async def get_me(
+    x_user_email: Optional[str] = Header(default=None),
+    authorization: Optional[str] = Header(default=None),
+):
+    return _resolve_user(default_user_id=None, email_header=x_user_email, authorization_header=authorization)
 
 
 @router.get("/")
 async def get_roster():
     return {"users": list_users()}
 
+@router.post("/")
+async def post_user(req: UserCreateRequest):
+    new_user = admin_create_user(req.email, req.name, req.role)
+    return {"success": True, "user": new_user}
 
 @router.get("/{user_id}")
 async def get_user_by_id_route(user_id: str):
@@ -67,6 +92,10 @@ async def get_user_by_id_route(user_id: str):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@router.get("/teacher/{teacher_id}/students")
+async def get_students_for_teacher(teacher_id: str):
+    return {"students": get_teacher_students(teacher_id)}
 
 
 @router.put("/me/role")

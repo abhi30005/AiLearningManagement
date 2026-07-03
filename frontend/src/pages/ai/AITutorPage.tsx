@@ -17,10 +17,10 @@ import {
 } from 'lucide-react'
 
 const suggestedQuestions = [
-  'Explain this concept in simple terms',
-  'Give me practice problems',
-  'What are the key takeaways?',
-  'How does this relate to real-world applications?',
+  'Explain Concepts',
+  'Summarize Notes',
+  'Generate Practice Questions',
+  'Generate Quiz',
 ]
 
 interface Message {
@@ -46,6 +46,7 @@ export default function AITutorPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [showHistory] = useState(true)
   const [chatHistory, setChatHistory] = useState<any[]>([])
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -179,10 +180,21 @@ export default function AITutorPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="btn-secondary btn-sm">
+              <label className="btn-secondary btn-sm cursor-pointer">
                 <FileText className="w-4 h-4" />
-                Chat with PDF
-              </button>
+                {uploadedFileName || 'Chat with PDF'}
+                <input 
+                  type="file" 
+                  accept="application/pdf" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setUploadedFileName(e.target.files[0].name)
+                      // In a real app, upload file to backend here
+                    }
+                  }} 
+                />
+              </label>
               <button className="btn-secondary btn-sm">
                 <Youtube className="w-4 h-4" />
                 Chat with Video

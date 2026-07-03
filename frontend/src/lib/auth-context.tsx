@@ -19,6 +19,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signInWithGoogle: (role?: 'student' | 'teacher' | 'admin') => Promise<{ error: Error | null }>
   signUp: (email: string, password: string, fullName: string, role: 'student' | 'teacher' | 'admin') => Promise<{ error: Error | null }>
+  signUpStudent: (email: string, password: string, fullName: string, department: string, course: string) => Promise<{ error: Error | null }>
+  signUpTeacher: (email: string, password: string, fullName: string, department: string, subject: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: Error | null }>
   updateProfile: (updates: Partial<User>) => Promise<{ error: Error | null }>
@@ -32,6 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+    const handleAuthChanged = () => {
+      if (mounted && !localStorage.getItem('token')) {
+        setUser(null)
+      }
+    }
+
+    window.addEventListener('auth:changed', handleAuthChanged)
 
     const loadUser = async () => {
       const token = localStorage.getItem('token')
@@ -42,7 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(data)
           }
         } catch (error) {
-          console.error("Failed to fetch user profile", error)
           localStorage.removeItem('token')
           if (mounted) setUser(null)
         }
@@ -56,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false
+      window.removeEventListener('auth:changed', handleAuthChanged)
     }
   }, [])
 
@@ -77,11 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'student' | 'teacher' | 'admin') => {
+  const signUpStudent = async (email: string, password: string, fullName: string, department: string, course: string) => {
     try {
-      const res = await apiFetch<any>('/auth/register', {
+      const res = await apiFetch<any>('/auth/register/student', {
         method: 'POST',
-        body: JSON.stringify({ email, password, name: fullName, role })
+        body: JSON.stringify({ email, password, name: fullName, department, course })
       })
 
       if (res.success && res.token) {
@@ -89,10 +98,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(res.user)
         return { error: null }
       }
-      return { error: new Error("Signup failed") }
+      return { error: new Error(res.detail || "Signup failed") }
     } catch (error: any) {
       return { error }
     }
+  }
+
+  const signUpTeacher = async (email: string, password: string, fullName: string, department: string, subject: string) => {
+    try {
+      const res = await apiFetch<any>('/auth/register/teacher', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, name: fullName, department, subject })
+      })
+
+      if (res.success && res.token) {
+        localStorage.setItem('token', res.token)
+        setUser(res.user)
+        return { error: null }
+      }
+      return { error: new Error(res.detail || "Signup failed") }
+    } catch (error: any) {
+      return { error }
+    }
+  }
+
+  const signUp = async (email: string, password: string, fullName: string, role: 'student' | 'teacher' | 'admin') => {
+    return { error: new Error("Deprecated: Use signUpStudent or signUpTeacher") }
   }
 
   const signInWithGoogle = async (role: 'student' | 'teacher' | 'admin' = 'student') => {
@@ -147,6 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signInWithGoogle,
         signUp,
+        signUpStudent,
+        signUpTeacher,
         signOut,
         resetPassword,
         updateProfile,

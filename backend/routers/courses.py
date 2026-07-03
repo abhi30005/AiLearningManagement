@@ -26,6 +26,10 @@ class CourseCreateReq(BaseModel):
     title: str
     description: str = ""
     category: str = "General"
+    level: str = "beginner"
+    language: str = "en"
+    thumbnail: Optional[str] = None
+    image: Optional[str] = None
     teacher_id: Optional[str] = None
 
 
@@ -37,6 +41,10 @@ class CourseUpdateReq(BaseModel):
     weeks: Optional[int] = None
     progress: Optional[int] = None
     active: Optional[bool] = None
+    teacherId: Optional[str] = None
+    language: Optional[str] = None
+    thumbnail: Optional[str] = None
+    image: Optional[str] = None
 
 
 class ChapterCreateReq(BaseModel):
@@ -62,6 +70,11 @@ class ProgressReq(BaseModel):
 async def get_courses():
     return list_courses()
 
+@router.get("/teacher/{teacher_id}")
+async def get_teacher_courses(teacher_id: str):
+    courses = list_courses()
+    return [c for c in courses if c.get("teacherId") == teacher_id]
+
 
 @router.post("/")
 async def post_course(req: CourseCreateReq):
@@ -70,6 +83,9 @@ async def post_course(req: CourseCreateReq):
         description=req.description,
         category=req.category,
         teacher_id=req.teacher_id,
+        thumbnail=req.thumbnail or req.image,
+        level=req.level,
+        language=req.language,
     )
     return {"success": True, "course": course}
 
@@ -84,7 +100,7 @@ async def get_course_detail(course_id: str):
 
 @router.post("/{course_id}/enroll")
 async def enroll_course(course_id: str, req: EnrollmentReq):
-    enrollment = enroll_user_in_course(req.userId or get_default_user_id("student"), course_id)
+    enrollment = enroll_user_in_course(req.userId or get_default_user_id("admin"), course_id)
     if not enrollment:
         raise HTTPException(status_code=404, detail="Course not found")
     return {"success": True, "enrollment": enrollment}
@@ -99,7 +115,7 @@ async def course_enrollments(course_id: str):
 
 @router.put("/{course_id}/progress")
 async def update_progress(course_id: str, req: ProgressReq):
-    enrollment = update_course_progress(req.userId or get_default_user_id("student"), course_id, req.progress)
+    enrollment = update_course_progress(req.userId or get_default_user_id("admin"), course_id, req.progress)
     if not enrollment:
         raise HTTPException(status_code=404, detail="Course not found")
     return {"success": True, "enrollment": enrollment}
@@ -149,3 +165,19 @@ async def list_modules(course_id: str, chapter_id: str):
     if modules is None:
         raise HTTPException(status_code=404, detail="Chapter not found")
     return {"modules": modules}
+
+@router.delete("/{course_id}/chapters/{chapter_id}/modules/{module_id}")
+async def delete_module(course_id: str, chapter_id: str, module_id: str):
+    from state_store import _LOCK, _load_unlocked, _save_unlocked
+    with _LOCK:
+        state = _load_unlocked()
+        for course in state.get("courses", []):
+            if course["id"] == course_id:
+                for chapter in course.get("chapters", []):
+                    if chapter["id"] == chapter_id:
+                        original_len = len(chapter.get("modules", []))
+                        chapter["modules"] = [m for m in chapter.get("modules", []) if m["id"] != module_id]
+                        if len(chapter["modules"]) != original_len:
+                            _save_unlocked(state)
+                            return {"success": True}
+    raise HTTPException(status_code=404, detail="Module not found")

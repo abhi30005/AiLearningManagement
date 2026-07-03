@@ -11,7 +11,7 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 
 @router.get("/summary")
 async def report_summary(user_id: str | None = None):
-    student = get_student_analytics(user_id or get_default_user_id("student"))
+    student = get_student_analytics(user_id or get_default_user_id("admin"))
     admin = get_admin_analytics()
     courses = list_courses()
     avg_progress = int(sum(int(c.get("progress", 0)) for c in courses) / len(courses)) if courses else 0

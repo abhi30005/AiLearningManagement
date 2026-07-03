@@ -64,8 +64,8 @@ export default function CourseDetailPage() {
       {/* Hero Section */}
       <div className="relative rounded-2xl overflow-hidden">
         <div className="absolute inset-0">
-          <img
-            src={courseData.thumbnail}
+            <img
+              src={courseData.thumbnail || courseData.image}
             alt={courseData.title}
             className="w-full h-full object-cover"
           />
@@ -222,6 +222,23 @@ export default function CourseDetailPage() {
                 </div>
               ))}
             </div>
+            
+            {isEnrolled && (
+              <div className="mt-8 p-6 bg-accent-50 border border-accent-200 rounded-xl flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-accent-800 flex items-center gap-2">
+                    <Award className="w-5 h-5" />
+                    Final AI Quiz & Certification
+                  </h3>
+                  <p className="text-sm text-accent-700 mt-1">
+                    Pass the final AI generated assessment with 75%+ to earn your certificate and badges.
+                  </p>
+                </div>
+                <Link to={`/learn/${id}/quiz/final`} className="btn-accent whitespace-nowrap">
+                  Take Final Quiz
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

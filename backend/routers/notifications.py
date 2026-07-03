@@ -18,12 +18,12 @@ class NotificationRequest(BaseModel):
 
 @router.get("/")
 async def get_notifications(user_id: Optional[str] = None):
-    return {"notifications": list_notifications(user_id or get_default_user_id("student"))}
+    return {"notifications": list_notifications(user_id or get_default_user_id("admin"))}
 
 
 @router.post("/")
 async def post_notification(req: NotificationRequest):
-    row = create_notification(req.userId or get_default_user_id("student"), req.title, req.message, req.type)
+    row = create_notification(req.userId or get_default_user_id("admin"), req.title, req.message, req.type)
     return {"success": True, "notification": row}
 
 

@@ -8,7 +8,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 @router.get("/study-hours")
 async def get_study_hours(user_id: str | None = None):
-    student = get_student_analytics(user_id or get_default_user_id("student"))
+    student = get_student_analytics(user_id or get_default_user_id("admin"))
     week_days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     trends = [{"day": day, "hours": student["studyHours"][idx]} for idx, day in enumerate(week_days)]
     return {"trends": trends}
@@ -43,6 +43,11 @@ async def get_skill_mastery():
 @router.get("/student/{student_id}")
 async def student_analytics(student_id: str):
     return get_student_analytics(student_id)
+
+@router.get("/student/{student_id}/results")
+async def student_analytics_results(student_id: str):
+    from state_store import get_student_analytics_results
+    return get_student_analytics_results(student_id)
 
 
 @router.get("/teacher/{teacher_id}")

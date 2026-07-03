@@ -21,6 +21,7 @@ class Settings:
     FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
     CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_db")
     DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@eduai.edu")
+    DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
     DEFAULT_TEACHER_EMAIL = os.getenv("DEFAULT_TEACHER_EMAIL", "teacher@eduai.edu")
     DEFAULT_STUDENT_EMAIL = os.getenv("DEFAULT_STUDENT_EMAIL", "student@eduai.edu")
     DEFAULT_ADMIN_ID = os.getenv("DEFAULT_ADMIN_ID", _default_user_id(DEFAULT_ADMIN_EMAIL, "admin"))
@@ -30,7 +31,7 @@ class Settings:
     DEFAULT_TEACHER_NAME = os.getenv("DEFAULT_TEACHER_NAME", "Course Teacher")
     DEFAULT_STUDENT_NAME = os.getenv("DEFAULT_STUDENT_NAME", "Student User")
     DEFAULT_STUDENT_WEAK_TOPICS = os.getenv("DEFAULT_STUDENT_WEAK_TOPICS", "")
-    SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "true").lower() in {"1", "true", "yes", "on"}
+    SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "false").lower() in {"1", "true", "yes", "on"}
     DEFAULT_COURSE_WEEKS = int(os.getenv("DEFAULT_COURSE_WEEKS", 8))
     DEFAULT_API_PORT = int(os.getenv("DEFAULT_API_PORT", 8000))
 

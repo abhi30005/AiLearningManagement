@@ -150,18 +150,18 @@ export default function CoursesPage() {
             <Link key={course.id} to={`/courses/${course.id}`} className="card-hover overflow-hidden group">
               <div className="relative h-48">
                 <img
-                  src={course.thumbnail}
+                  src={course.image || course.thumbnail}
                   alt={course.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute top-3 left-3">
                   <span className="px-2 py-1 bg-white/90 rounded-md text-xs font-medium text-secondary-700">
-                    {course.category}
+                    {course.category || 'General'}
                   </span>
                 </div>
                 <div className="absolute top-3 right-3">
                   <span className="px-2 py-1 bg-accent-500 text-white rounded-md text-xs font-medium">
-                    {course.price}
+                    {course.price || 'Free'}
                   </span>
                 </div>
               </div>
@@ -177,23 +177,23 @@ export default function CoursesPage() {
                 <p className="text-sm text-secondary-600 mt-1 line-clamp-2">{course.description}</p>
 
                 <div className="flex items-center gap-2 mt-3 text-sm text-secondary-600">
-                  <span className="font-medium text-secondary-900">{course.instructor}</span>
+                  <span className="font-medium text-secondary-900">{course.instructor || 'Instructor'}</span>
                 </div>
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-secondary-100">
                   <div className="flex items-center gap-4 text-xs text-secondary-500">
                     <span className="flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 text-warning-500 fill-warning-500" />
-                      {course.rating}
+                      {course.rating || '4.8'}
                     </span>
                     <span className="flex items-center gap-1">
                       <Users className="w-3.5 h-3.5" />
-                      {course.students.toLocaleString()}
+                      {(course.studentsCount || course.students || 0).toLocaleString()}
                     </span>
                   </div>
                   <span className="flex items-center gap-1 text-xs text-secondary-500">
                     <Clock className="w-3.5 h-3.5" />
-                    {course.duration}
+                    {course.weeks ? `${course.weeks} weeks` : (course.duration || 'Flexible')}
                   </span>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export default function CoursesPage() {
           ) : (
             <Link key={course.id} to={`/courses/${course.id}`} className="card-hover p-4 flex gap-4">
               <img
-                src={course.thumbnail}
+                src={course.image || course.thumbnail}
                 alt={course.title}
                 className="w-40 h-28 rounded-lg object-cover flex-shrink-0"
               />
@@ -210,22 +210,22 @@ export default function CoursesPage() {
                   <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
                     {course.level}
                   </span>
-                  <span className="text-xs text-secondary-500">{course.category}</span>
+                  <span className="text-xs text-secondary-500">{course.category || 'General'}</span>
                 </div>
                 <h3 className="font-semibold text-secondary-900">{course.title}</h3>
                 <p className="text-sm text-secondary-600 mt-1 line-clamp-2">{course.description}</p>
                 <div className="flex items-center gap-4 mt-2 text-sm text-secondary-500">
-                  <span>By {course.instructor}</span>
+                  <span>By {course.instructor || 'Instructor'}</span>
                   <span className="flex items-center gap-1">
                     <Star className="w-3.5 h-3.5 text-warning-500 fill-warning-500" />
-                    {course.rating}
+                    {course.rating || '4.8'}
                   </span>
-                  <span>{course.students.toLocaleString()} students</span>
-                  <span>{course.lessons} lessons</span>
+                  <span>{(course.studentsCount || course.students || 0).toLocaleString()} students</span>
+                  <span>{course.chapters?.length || course.lessons || 0} lessons</span>
                 </div>
               </div>
               <div className="flex flex-col items-end justify-between">
-                <span className="text-accent-600 font-semibold">{course.price}</span>
+                <span className="text-accent-600 font-semibold">{course.price || 'Free'}</span>
                 <button className="btn-primary btn-sm">
                   {t('courses.enroll')}
                 </button>

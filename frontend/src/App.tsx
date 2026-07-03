@@ -21,6 +21,19 @@ import AssignmentsPage from './pages/learn/AssignmentsPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import AdminUsersPage from './pages/admin/UsersPage'
 import AdminCategoriesPage from './pages/admin/CategoriesPage'
+import AdminCoursesPage from './pages/admin/AdminCoursesPage'
+import AdminEnrollmentsPage from './pages/admin/AdminEnrollmentsPage'
+import MyCoursesPage from './pages/student/MyCoursesPage'
+import WhiteboardPage from './pages/student/WhiteboardPage'
+import ResultsPage from './pages/student/ResultsPage'
+import CertificatesPage from './pages/student/CertificatesPage'
+
+import TeacherCoursesPage from './pages/teacher/TeacherCoursesPage'
+import TeacherStudentsPage from './pages/teacher/TeacherStudentsPage'
+import TeacherAssignmentsPage from './pages/teacher/TeacherAssignmentsPage'
+import TeacherQuizzesPage from './pages/teacher/TeacherQuizzesPage'
+import TeacherResultsPage from './pages/teacher/TeacherResultsPage'
+import TeacherMaterialsPage from './pages/teacher/TeacherMaterialsPage'
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, loading } = useAuth()
@@ -92,10 +105,27 @@ function AppRoutes() {
         <Route path="/ai-tutor" element={<ProtectedRoute><AITutorPage /></ProtectedRoute>} />
         <Route path="/assignments" element={<ProtectedRoute><AssignmentsPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        
+        {/* Student Specific Routes */}
+        <Route path="/my-courses" element={<ProtectedRoute allowedRoles={['student']}><MyCoursesPage /></ProtectedRoute>} />
+        <Route path="/whiteboard" element={<ProtectedRoute><WhiteboardPage /></ProtectedRoute>} />
+        <Route path="/results" element={<ProtectedRoute allowedRoles={['student']}><ResultsPage /></ProtectedRoute>} />
+        <Route path="/certificates" element={<ProtectedRoute allowedRoles={['student']}><CertificatesPage /></ProtectedRoute>} />
+
+        {/* Teacher Specific Routes */}
+        <Route path="/teacher/courses" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherCoursesPage /></ProtectedRoute>} />
+        <Route path="/teacher/students" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherStudentsPage /></ProtectedRoute>} />
+        <Route path="/teacher/assignments" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAssignmentsPage /></ProtectedRoute>} />
+        <Route path="/teacher/quizzes" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherQuizzesPage /></ProtectedRoute>} />
+        <Route path="/teacher/results" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherResultsPage /></ProtectedRoute>} />
+        <Route path="/teacher/materials" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMaterialsPage /></ProtectedRoute>} />
 
         {/* Admin Routes */}
-        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+        <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage defaultRole="student" /></ProtectedRoute>} />
+        <Route path="/admin/teachers" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage defaultRole="teacher" /></ProtectedRoute>} />
+        <Route path="/admin/courses" element={<ProtectedRoute allowedRoles={['admin']}><AdminCoursesPage /></ProtectedRoute>} />
         <Route path="/admin/categories" element={<ProtectedRoute allowedRoles={['admin']}><AdminCategoriesPage /></ProtectedRoute>} />
+        <Route path="/admin/enrollments" element={<ProtectedRoute allowedRoles={['admin']}><AdminEnrollmentsPage /></ProtectedRoute>} />
       </Route>
 
       {/* Default redirect */}

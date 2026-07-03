@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const AUTH_CHANGED_EVENT = 'auth:changed';
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
@@ -27,6 +28,13 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
     } catch (e) {
       // Not JSON
     }
+
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+      errorMsg = errorMsg || 'Session expired. Please sign in again.';
+    }
+
     throw new Error(errorMsg);
   }
 

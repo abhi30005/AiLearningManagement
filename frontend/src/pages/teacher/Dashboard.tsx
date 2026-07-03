@@ -101,7 +101,7 @@ export default function TeacherDashboard() {
             <div key={course.id} className="card-hover overflow-hidden">
               <div className="relative h-40">
                 <img
-                  src={course.thumbnail}
+                  src={course.image || course.thumbnail}
                   alt={course.title}
                   className="w-full h-full object-cover"
                 />

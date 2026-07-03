@@ -13,22 +13,23 @@ from state_store import (
     get_default_user_id,
     list_assignments,
     list_submissions,
+    issue_course_certificate,
+    grade_submission,
 )
 
 try:
-    from google import genai
-    from google.genai import types
+    import openai
 except ImportError:
-    genai = None
+    openai = None
 
 
 router = APIRouter(prefix="/assessments", tags=["Quiz & Assessments, Assignments"])
 
 
-def get_gemini_client():
-    key = os.environ.get("GEMINI_API_KEY")
-    if key and key != "MY_GEMINI_API_KEY" and genai:
-        return genai.Client(api_key=key)
+def get_openai_client():
+    key = os.environ.get("OPENAI_API_KEY")
+    if key and key != "MY_OPENAI_API_KEY" and openai:
+        return openai.OpenAI(api_key=key)
     return None
 
 
@@ -61,6 +62,15 @@ class EvaluateAssignmentRequest(BaseModel):
     userId: Optional[str] = None
     submissionText: str
 
+class GradeSubmissionRequest(BaseModel):
+    score: int
+    feedback: str
+
+class SubmitQuizRequest(BaseModel):
+    userId: Optional[str] = None
+    courseId: str
+    score: int
+
 
 @router.post("/generate-quiz")
 async def generate_quiz(req: GenerateQuizRequest):
@@ -84,25 +94,44 @@ async def generate_quiz(req: GenerateQuizRequest):
         for index in range(count)
     ]
 
-    client = get_gemini_client()
+    client = get_openai_client()
     if client:
         try:
             prompt = (
                 f'Generate a {difficulty} multiple choice quiz with exactly {count} questions about "{topic}". '
-                'Return ONLY JSON array with fields: id, question, options[4], correctAnswerIndex, explanation.'
+                'Return ONLY a JSON object with a single key "questions" mapped to an array with fields: id, question, options[4], correctAnswerIndex, explanation.'
             )
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json"),
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
             )
-            parsed = json.loads(response.text)
-            return {"questions": parsed}
+            parsed = json.loads(response.choices[0].message.content)
+            return {"questions": parsed.get("questions", [])}
         except Exception:
             pass
 
     return {"questions": fallback}
 
+@router.post("/submit-quiz")
+async def submit_quiz(req: SubmitQuizRequest):
+    user_id = req.userId or get_default_user_id("admin")
+    
+    # Record the quiz submission
+    from state_store import record_quiz_submission
+    record_quiz_submission(user_id, req.courseId, req.score)
+    
+    if req.score >= 75:
+        certificate_info = issue_course_certificate(user_id, req.courseId, req.score)
+        if certificate_info:
+            return {
+                "success": True, 
+                "passed": True, 
+                "certificate": certificate_info,
+                "badges": certificate_info.get("new_badges", [])
+            }
+    
+    return {"success": True, "passed": False}
 
 @router.post("/assignments")
 async def create_course_assignment(req: AssignmentCreateRequest):
@@ -128,7 +157,7 @@ async def get_assignments(course_id: Optional[str] = None, teacher_id: Optional[
 @router.post("/submit-assignment")
 async def submit_assignment(req: SubmitAssignmentRequest):
     assignment = create_submission(
-        user_id=req.userId or get_default_user_id("student"),
+        user_id=req.userId or get_default_user_id("admin"),
         course_id=req.courseId,
         title=req.title,
         submission_text=req.submissionText,
@@ -140,23 +169,31 @@ async def submit_assignment(req: SubmitAssignmentRequest):
 async def get_assignment_submissions(user_id: str | None = None):
     return {"submissions": list_submissions(user_id)}
 
+@router.put("/submit-assignment/{submission_id}/grade")
+async def manual_grade_assignment(submission_id: str, req: GradeSubmissionRequest):
+    updated = grade_submission(submission_id, req.score, req.feedback)
+    if not updated:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return {"success": True, "submission": updated}
+
 
 @router.post("/evaluate-assignment")
 async def evaluate_assignment(req: EvaluateAssignmentRequest):
-    client = get_gemini_client()
+    client = get_openai_client()
     if client:
         try:
             prompt = (
-                "You are an academic evaluator. Evaluate the submission and return JSON object with: "
+                "You are an academic evaluator. Evaluate the submission and return a JSON object with keys: "
                 "grade (A-F), score (0-100), feedback (2-3 lines), plagiarismRate (like '3% - Original Work').\n\n"
                 f"Submission:\n{req.submissionText[:3000]}"
             )
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json"),
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
             )
-            parsed = json.loads(response.text)
+            parsed = json.loads(response.choices[0].message.content)
             if req.userId:
                 apply_submission_evaluation(req.userId, parsed)
             return parsed

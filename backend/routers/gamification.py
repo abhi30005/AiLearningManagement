@@ -29,7 +29,7 @@ async def add_xp(
     user_id: str | None = Query(default=None),
     amount: int | None = Query(default=None),
 ):
-    resolved_user_id = user_id or (req.userId if req else get_default_user_id("student"))
+    resolved_user_id = user_id or (req.userId if req else get_default_user_id("admin"))
     resolved_amount = int(amount if amount is not None else (req.amount if req else 0))
     stats = award_xp(resolved_user_id, resolved_amount)
     return {

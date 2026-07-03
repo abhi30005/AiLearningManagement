@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
 import { useLanguage } from '../../lib/language-context'
 import {
@@ -12,6 +13,8 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
+  Image,
+  X,
 } from 'lucide-react'
 
 interface Module {
@@ -22,12 +25,15 @@ interface Module {
 
 export default function CreateCoursePage() {
   const { t } = useLanguage()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
   const [level, setLevel] = useState('beginner')
   const [language, setLanguage] = useState('en')
+  const [thumbnail, setThumbnail] = useState('')
+  const [thumbnailName, setThumbnailName] = useState('')
   const [modules, setModules] = useState<Module[]>([
     { id: '1', title: 'Module 1: Introduction', lessons: [] },
   ])
@@ -80,6 +86,35 @@ export default function CreateCoursePage() {
 
   const [loading, setLoading] = useState(false)
 
+  const handleThumbnailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload a PNG or JPG image.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Thumbnail must be 5MB or smaller.')
+      event.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setThumbnail(String(reader.result || ''))
+      setThumbnailName(file.name)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeThumbnail = () => {
+    setThumbnail('')
+    setThumbnailName('')
+  }
+
   const handleSave = async () => {
     setLoading(true)
     try {
@@ -88,11 +123,12 @@ export default function CreateCoursePage() {
         body: JSON.stringify({
           title,
           description,
-          instructor_id: 'current-user-id', // The backend will use the authenticated user
+          teacher_id: user?.id,
           price: 0,
           category,
           level,
-          language
+          language,
+          thumbnail: thumbnail || undefined,
         }),
       })
       navigate('/courses')
@@ -189,13 +225,40 @@ export default function CreateCoursePage() {
       {/* Thumbnail */}
       <div className="card p-6">
         <h2 className="text-lg font-semibold text-secondary-900 mb-4">{t('courses.courseThumbnail')}</h2>
-        <div className="border-2 border-dashed border-secondary-300 rounded-lg p-8 text-center hover:border-primary-400 transition-colors cursor-pointer">
-          <div className="text-secondary-500">
-            <Plus className="w-12 h-12 mx-auto mb-2" />
-            <p>Click to upload or drag and drop</p>
-            <p className="text-sm">PNG, JPG up to 5MB</p>
+        {thumbnail ? (
+          <div className="overflow-hidden rounded-lg border border-secondary-200 bg-secondary-50">
+            <div className="relative aspect-video bg-secondary-200">
+              <img src={thumbnail} alt="Course thumbnail preview" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={removeThumbnail}
+                className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-black/70 text-white hover:bg-black"
+                aria-label="Remove thumbnail"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-3 p-3">
+              <div className="flex min-w-0 items-center gap-2 text-sm text-secondary-700">
+                <Image className="h-4 w-4 flex-shrink-0 text-primary-600" />
+                <span className="truncate">{thumbnailName}</span>
+              </div>
+              <label className="btn-secondary btn-sm cursor-pointer">
+                Replace
+                <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleThumbnailChange} className="hidden" />
+              </label>
+            </div>
           </div>
-        </div>
+        ) : (
+          <label className="block cursor-pointer rounded-lg border-2 border-dashed border-secondary-300 p-8 text-center transition-colors hover:border-primary-400 hover:bg-primary-50/40">
+            <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleThumbnailChange} className="hidden" />
+            <div className="text-secondary-500">
+              <Plus className="w-12 h-12 mx-auto mb-2" />
+              <p>Click to upload</p>
+              <p className="text-sm">PNG, JPG, or WEBP up to 5MB</p>
+            </div>
+          </label>
+        )}
       </div>
 
       {/* Course Structure */}

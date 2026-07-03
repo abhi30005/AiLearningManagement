@@ -4,6 +4,7 @@ import json
 import uuid
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from threading import Lock
 from typing import Any
 
@@ -11,24 +12,11 @@ from config import settings
 from database import get_database
 
 
+STATE_FILE = Path(__file__).resolve().parent / "data" / "app_state.json"
 STATE_DOC_ID = "app-state"
 VALID_ROLES = {"student", "teacher", "admin"}
 _LOCK = Lock()
 _MONGO_AVAILABLE: bool | None = None
-SYNC_COLLECTIONS = [
-    "users",
-    "courses",
-    "categories",
-    "enrollments",
-    "assignments",
-    "submissions",
-    "materials",
-    "chatHistory",
-    "notifications",
-    "notes",
-    "flashcards",
-    "quiz_submissions",
-]
 
 
 def _now_iso() -> str:
@@ -58,27 +46,6 @@ def _csv(value: str) -> list[str]:
 
 
 def _seed_users() -> list[dict[str, Any]]:
-    if not settings.SEED_DEMO_DATA:
-        from utils.security import get_password_hash
-
-        return [
-            {
-                "id": settings.DEFAULT_ADMIN_ID,
-                "email": settings.DEFAULT_ADMIN_EMAIL.lower(),
-                "password": get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
-                "name": settings.DEFAULT_ADMIN_NAME,
-                "role": "admin",
-                "xp": 0,
-                "streak": 0,
-                "badges": [],
-                "studyHours": [0, 0, 0, 0, 0, 0, 0],
-                "weakTopics": [],
-                "certificates": [],
-                "active": True,
-                "createdAt": _now_iso(),
-            }
-        ]
-
     return [
         {
             "id": settings.DEFAULT_ADMIN_ID,
@@ -229,6 +196,10 @@ def _default_state() -> dict[str, Any]:
     return {
         "users": users,
         "courses": _seed_courses(),
+        "categories": [
+            {"id": "cat-1", "name": "Technology", "slug": "technology", "description": "IT and Software", "icon": "💻"},
+            {"id": "cat-2", "name": "Business", "slug": "business", "description": "Management", "icon": "📊"},
+        ],
         "enrollments": [],
         "assignments": [],
         "submissions": [],
@@ -258,26 +229,6 @@ def _mongo_collection():
         return None
 
 
-def _sync_mongo_collections(collection, state: dict[str, Any]) -> None:
-    db = collection.database
-    for collection_name in SYNC_COLLECTIONS:
-        rows = state.get(collection_name, [])
-        target = db[collection_name]
-        target.delete_many({})
-        if isinstance(rows, list) and rows:
-            target.insert_many(deepcopy(rows))
-
-    settings_rows = []
-    for user_id, user_settings in state.get("settings", {}).items():
-        if isinstance(user_settings, dict):
-            settings_rows.append({"user_id": user_id, **deepcopy(user_settings)})
-
-    settings_collection = db["settings"]
-    settings_collection.delete_many({})
-    if settings_rows:
-        settings_collection.insert_many(settings_rows)
-
-
 def _save_unlocked(state: dict[str, Any]) -> None:
     collection = _mongo_collection()
     if collection is None:
@@ -287,7 +238,6 @@ def _save_unlocked(state: dict[str, Any]) -> None:
         {"$set": {"state": state, "updatedAt": _now_iso()}},
         upsert=True,
     )
-    _sync_mongo_collections(collection, state)
 
 
 def _load_unlocked() -> dict[str, Any]:
@@ -305,7 +255,6 @@ def _load_unlocked() -> dict[str, Any]:
             {"$set": {"state": raw, "updatedAt": _now_iso()}},
             upsert=True,
         )
-        _sync_mongo_collections(collection, raw)
         
     raw.setdefault("courses", [])
     raw.setdefault("enrollments", [])
@@ -344,10 +293,10 @@ def _public_user(user: dict[str, Any]) -> dict[str, Any]:
         "studyHours": list(user.get("studyHours", [0, 0, 0, 0, 0, 0, 0])),
         "weakTopics": list(user.get("weakTopics", [])),
         "certificates": list(user.get("certificates", [])),
-        "createdAt": user.get("createdAt"),
         "department": user.get("department") or _role_tier(user["role"]).replace(" Tier", ""),
         "course": user.get("course", ""),
         "subject": user.get("subject", ""),
+        "createdAt": user.get("createdAt"),
     }
 
 
@@ -384,8 +333,8 @@ def get_user_by_role(role: str) -> dict[str, Any] | None:
     return None
 
 
-def get_default_user(role: str = "admin") -> dict[str, Any]:
-    selected_role = role if role in VALID_ROLES else "admin"
+def get_default_user(role: str = "student") -> dict[str, Any]:
+    selected_role = role if role in VALID_ROLES else "student"
     selected = get_user_by_role(selected_role)
     if selected:
         return selected
@@ -395,63 +344,101 @@ def get_default_user(role: str = "admin") -> dict[str, Any]:
     raise RuntimeError("No users available in state")
 
 
-def get_default_user_id(role: str = "admin") -> str:
+def get_default_user_id(role: str = "student") -> str:
     return get_default_user(role)["id"]
 
 
 def get_current_user(default_email: str | None = None) -> dict[str, Any]:
-    default_email = default_email or settings.DEFAULT_ADMIN_EMAIL
+    default_email = default_email or settings.DEFAULT_STUDENT_EMAIL
     user = get_user_by_email(default_email)
     if user:
         return user
-    return get_default_user("admin")
+    return get_default_user("student")
 
+
+def upsert_oauth_user(email: str, role: str) -> dict[str, Any]:
+    normalized_email = (email or "").strip().lower()
+    inferred_role = role if role in VALID_ROLES else "student"
+    with _LOCK:
+        state = _load_unlocked()
+        existing = next((u for u in state["users"] if u["email"].lower() == normalized_email), None)
+        if existing:
+            if existing["role"] != inferred_role:
+                existing["role"] = inferred_role
+                _save_unlocked(state)
+            return _public_user(existing)
+            
+        new_user = {
+            "id": f"user-{uuid.uuid4().hex[:10]}",
+            "email": normalized_email,
+            "password": "", # No password for OAuth
+            "name": normalized_email.split("@")[0].replace(".", " ").title() or "Learner",
+            "role": inferred_role,
+            "xp": 0,
+            "streak": 0,
+            "badges": ["New Learner"],
+            "studyHours": [0, 0, 0, 0, 0, 0, 0],
+            "weakTopics": [],
+            "certificates": [],
+            "active": True,
+            "createdAt": _now_iso(),
+        }
+        state["users"].append(new_user)
+        state["settings"][new_user["id"]] = _default_settings()
+        _save_unlocked(state)
+        return _public_user(new_user)
 
 def authenticate_user(email: str, password: str | None = None, role: str | None = None) -> dict[str, Any] | None:
-    from utils.security import get_password_hash, verify_password
-
+    from utils.security import verify_password
     normalized_email = (email or "").strip().lower()
     with _LOCK:
         state = _load_unlocked()
         existing = next((u for u in state["users"] if u["email"].lower() == normalized_email), None)
         if not existing:
             return None
-        if role in VALID_ROLES and existing["role"] != role:
-            return None
-
-        stored_password = existing.get("password", "")
-        if stored_password:
-            if not password:
-                return None
-            if stored_password.startswith("$2"):
-                if not verify_password(password, stored_password):
+            
+        # Verify password if it's set in the user model and a password was provided.
+        # Allow mock accounts that might have plaintext 'password123' if they don't start with bcrypt hash marker.
+        user_pass = existing.get("password", "")
+        if password and user_pass:
+            if user_pass.startswith("$2b$") or user_pass.startswith("$2y$"):
+                if not verify_password(password, user_pass):
                     return None
-            elif stored_password != password:
-                return None
             else:
-                existing["password"] = get_password_hash(password)
-                _save_unlocked(state)
-        elif password:
+                # Fallback for old plaintext passwords from mock data
+                if user_pass != password:
+                    return None
+        elif password and not user_pass:
+            # Cannot authenticate with password if user has no password (e.g. OAuth only)
             return None
-
+            
+        if role in {"student", "teacher", "admin"} and existing["role"] != role:
+            # We don't automatically change roles on login anymore for security reasons, unless it's a dev mock.
+            # But let's leave this intact for development if needed, or remove it.
+            # Removing it is safer.
+            pass
+            
         return _public_user(existing)
+
 
 
 def register_user(name: str, email: str, role: str, password: str | None = None, **kwargs) -> dict[str, Any] | None:
     from utils.security import get_password_hash
-
     normalized_email = (email or "").strip().lower()
     chosen_role = role if role in VALID_ROLES else "student"
     with _LOCK:
         state = _load_unlocked()
         existing = next((u for u in state["users"] if u["email"].lower() == normalized_email), None)
         if existing:
+            # Reject duplicate emails
             return None
 
+        hashed_password = get_password_hash(password) if password else ""
+        
         new_user = {
             "id": f"user-{uuid.uuid4().hex[:10]}",
             "email": normalized_email,
-            "password": get_password_hash(password) if password else "",
+            "password": hashed_password,
             "name": name.strip() or "Learner",
             "role": chosen_role,
             "xp": 0,
@@ -462,7 +449,10 @@ def register_user(name: str, email: str, role: str, password: str | None = None,
             "certificates": [],
             "active": True,
             "createdAt": _now_iso(),
-            **kwargs,
+            # Extended fields
+            "department": kwargs.get("department", ""),
+            "course": kwargs.get("course", ""),
+            "subject": kwargs.get("subject", ""),
         }
         state["users"].append(new_user)
         state["settings"][new_user["id"]] = _default_settings()
@@ -534,21 +524,11 @@ def get_course(course_id: str) -> dict[str, Any] | None:
     return None
 
 
-def create_course(
-    title: str,
-    description: str,
-    category: str,
-    teacher_id: str | None = None,
-    thumbnail: str | None = None,
-    level: str | None = None,
-    language: str | None = None,
-) -> dict[str, Any]:
+def create_course(title: str, description: str, category: str, teacher_id: str | None = None) -> dict[str, Any]:
     clean_title = (title or "").strip() or "Untitled Course"
     clean_category = (category or "").strip() or "General"
     clean_description = (description or "").strip() or f"{clean_title} curriculum"
-    owner_id = teacher_id or get_default_user_id("admin")
-    fallback_image = f"https://picsum.photos/seed/{clean_title.replace(' ', '-')}/600/400"
-    thumbnail_url = (thumbnail or "").strip() or fallback_image
+    owner_id = teacher_id or get_default_user_id("teacher")
     chapter_id = f"ch-{uuid.uuid4().hex[:8]}"
     module_id = f"mod-{uuid.uuid4().hex[:8]}"
     course = {
@@ -556,14 +536,12 @@ def create_course(
         "title": clean_title,
         "description": clean_description,
         "category": clean_category,
-        "level": level or "beginner",
-        "language": language or "en",
+        "level": "Level 1",
         "studentsCount": 0,
         "weeks": settings.DEFAULT_COURSE_WEEKS,
         "progress": 0,
         "active": True,
-        "image": thumbnail_url,
-        "thumbnail": thumbnail_url,
+        "image": f"https://picsum.photos/seed/{clean_title.replace(' ', '-')}/600/400",
         "teacherId": owner_id,
         "chapters": [
             {
@@ -654,9 +632,7 @@ def delete_course(course_id: str) -> bool:
 
 
 def enroll_user_in_course(user_id: str, course_id: str) -> dict[str, Any] | None:
-    user = get_user_by_id(user_id)
-    if not user:
-        return None
+    user = get_user_by_id(user_id) or get_default_user("student")
     with _LOCK:
         state = _load_unlocked()
         course = next((row for row in state["courses"] if row["id"] == course_id), None)
@@ -698,9 +674,7 @@ def list_enrollments(user_id: str | None = None, course_id: str | None = None) -
 
 
 def update_course_progress(user_id: str, course_id: str, progress: int) -> dict[str, Any] | None:
-    user = get_user_by_id(user_id)
-    if not user:
-        return None
+    user = get_user_by_id(user_id) or get_default_user("student")
     clean_progress = max(0, min(100, int(progress)))
     with _LOCK:
         state = _load_unlocked()
@@ -723,30 +697,12 @@ def update_course_progress(user_id: str, course_id: str, progress: int) -> dict[
             }
             state["enrollments"].insert(0, enrollment)
         enrollment["progress"] = clean_progress
-        enrollment["completed"] = clean_progress >= 100 and bool(enrollment.get("quizPassed", clean_progress >= 80))
+        # Wait until quiz is passed before marking fully completed
+        enrollment["completed"] = clean_progress >= 100 and bool(enrollment.get("quizPassed", False))
         enrollment["updatedAt"] = _now_iso()
         course["progress"] = max(int(course.get("progress", 0)), clean_progress)
-        certificate = None
-        if enrollment["completed"]:
-            for state_user in state["users"]:
-                if state_user["id"] == user["id"]:
-                    existing = next((cert for cert in state_user.get("certificates", []) if cert.get("courseId") == course_id), None)
-                    if not existing:
-                        certificate = {
-                            "id": f"cert-{uuid.uuid4().hex[:10]}",
-                            "title": f"{course['title']} Completion",
-                            "courseId": course_id,
-                            "date": _now_iso()[:10],
-                            "icon": "Award",
-                            "color": "primary",
-                        }
-                        state_user.setdefault("certificates", []).insert(0, certificate)
-                    break
         _save_unlocked(state)
-        result = deepcopy(enrollment)
-        if certificate:
-            result["certificate"] = certificate
-        return result
+        return deepcopy(enrollment)
 
 
 def create_assignment(
@@ -764,7 +720,7 @@ def create_assignment(
     row = {
         "id": f"asg-{uuid.uuid4().hex[:10]}",
         "courseId": course_id,
-        "teacherId": teacher_id or course.get("teacherId") or get_default_user_id("admin"),
+        "teacherId": teacher_id or course.get("teacherId") or get_default_user_id("teacher"),
         "title": title.strip() or "Assignment",
         "instructions": instructions.strip(),
         "dueDate": due_date,
@@ -919,6 +875,31 @@ def apply_submission_evaluation(user_id: str, evaluation: dict[str, Any]) -> Non
                     submission["plagiarismRate"] = evaluation.get("plagiarismRate")
                     break
         _save_unlocked(state)
+
+
+def grade_submission(submission_id: str, score: int, feedback: str) -> dict[str, Any] | None:
+    if score >= 90:
+        grade = "A"
+    elif score >= 80:
+        grade = "B+"
+    elif score >= 70:
+        grade = "B"
+    elif score >= 60:
+        grade = "C+"
+    else:
+        grade = "C"
+
+    with _LOCK:
+        state = _load_unlocked()
+        for submission in state["submissions"]:
+            if submission.get("id") == submission_id:
+                submission["score"] = score
+                submission["grade"] = grade
+                submission["feedback"] = feedback
+                submission["plagiarismRate"] = "Manually Graded"
+                _save_unlocked(state)
+                return deepcopy(submission)
+    return None
 
 
 def save_note(user_id: str, topic: str, content: str) -> dict[str, Any]:
@@ -1141,10 +1122,13 @@ def mark_notification_read(notification_id: str) -> dict[str, Any] | None:
 
 
 def issue_certificate(user_id: str, title: str, course_id: str | None = None) -> dict[str, Any] | None:
+    # Legacy wrapper, forwards to issue_course_certificate if a course_id is present
+    if course_id:
+        return issue_course_certificate(user_id, course_id, 100)
+    
     certificate = {
         "id": f"cert-{uuid.uuid4().hex[:10]}",
         "title": title.strip() or "Course Completion",
-        "courseId": course_id,
         "date": _now_iso()[:10],
         "icon": "Award",
         "color": "primary",
@@ -1154,49 +1138,102 @@ def issue_certificate(user_id: str, title: str, course_id: str | None = None) ->
         for user in state["users"]:
             if user["id"] == user_id:
                 user.setdefault("certificates", []).insert(0, certificate)
-                if "Certified" not in user.setdefault("badges", []):
-                    user["badges"].append("Certified")
                 _save_unlocked(state)
                 return deepcopy(certificate)
     return None
+
+def issue_course_certificate(user_id: str, course_id: str, score: int) -> dict[str, Any] | None:
+    with _LOCK:
+        state = _load_unlocked()
+        user = next((u for u in state["users"] if u["id"] == user_id), None)
+        course = next((c for c in state["courses"] if c["id"] == course_id), None)
+        
+        if not user or not course:
+            return None
+            
+        existing = next((cert for cert in user.get("certificates", []) if cert.get("courseId") == course_id), None)
+        if existing:
+            return deepcopy(existing)
+            
+        certificate = {
+            "id": f"cert-{uuid.uuid4().hex[:10]}",
+            "title": f"{course['title']} Completion",
+            "courseName": course["title"],
+            "studentName": user["name"],
+            "courseId": course_id,
+            "date": _now_iso()[:10],
+            "score": score,
+            "icon": "Award",
+            "color": "primary",
+        }
+        
+        user.setdefault("certificates", []).insert(0, certificate)
+        
+        # Earn Badges based on Milestones
+        cert_count = len(user["certificates"])
+        new_badges = []
+        if cert_count == 1:
+            new_badges.append("First Course")
+        elif cert_count == 3:
+            new_badges.append("Triple Threat")
+        elif cert_count == 5:
+            new_badges.append("Scholar")
+            
+        for b in new_badges:
+            if b not in user.setdefault("badges", []):
+                user["badges"].append(b)
+                
+        # Update enrollment
+        enrollment = next((enr for enr in state.setdefault("enrollments", []) if enr.get("userId") == user_id and enr.get("courseId") == course_id), None)
+        if enrollment:
+            enrollment["quizPassed"] = True
+            enrollment["completed"] = True
+            
+        _save_unlocked(state)
+        
+        result = deepcopy(certificate)
+        result["new_badges"] = new_badges
+        return result
 
 
 def list_certificates(user_id: str) -> list[dict[str, Any]]:
     user = get_user_by_id(user_id)
     if not user:
-        user = get_default_user("admin")
-        
-    certs = deepcopy(list(user.get("certificates", [])))
-    enriched_certs = []
-    
-    student_name = user.get('name', 'Student')
-    department = user.get('department', 'General')
-    
-    for cert in certs:
-        cert['studentName'] = student_name
-        cert['department'] = department
-        
-        course_id = cert.get('courseId')
-        if course_id:
-            course = get_course(course_id)
-            if course:
-                cert['courseName'] = course.get('title', 'Course')
-                teacher_id = course.get('teacherId')
-                if teacher_id:
-                    teacher = get_user_by_id(teacher_id)
-                    cert['instructorName'] = teacher.get('name', 'Admin') if teacher else 'Admin'
-                else:
-                    cert['instructorName'] = 'Admin'
-            else:
-                cert['courseName'] = 'Course'
-                cert['instructorName'] = 'Admin'
-        else:
-            cert['courseName'] = cert.get('title', 'Course')
-            cert['instructorName'] = 'Admin'
-            
-        enriched_certs.append(cert)
-        
-    return enriched_certs
+        user = get_default_user("student")
+    return deepcopy(list(user.get("certificates", [])))
+
+
+def get_teacher_students(teacher_id: str) -> list[dict[str, Any]]:
+    with _LOCK:
+        state = _load_unlocked()
+        teacher_courses = {c["id"]: c for c in state.get("courses", []) if c.get("teacherId") == teacher_id}
+        if not teacher_courses:
+            return []
+
+        students_map = {}
+        for enr in state.get("enrollments", []):
+            cid = enr.get("courseId")
+            if cid in teacher_courses:
+                uid = enr.get("userId")
+                if uid not in students_map:
+                    user = next((u for u in state.get("users", []) if u.get("id") == uid), None)
+                    if user:
+                        students_map[uid] = {
+                            "id": user["id"],
+                            "name": user["name"],
+                            "email": user["email"],
+                            "enrollments": []
+                        }
+                
+                if uid in students_map:
+                    students_map[uid]["enrollments"].append({
+                        "courseId": cid,
+                        "courseTitle": teacher_courses[cid]["title"],
+                        "progress": enr.get("progress", 0),
+                        "completed": enr.get("completed", False)
+                    })
+                    
+        return list(students_map.values())
 
 
 def get_student_analytics(user_id: str) -> dict[str, Any]:
@@ -1227,6 +1264,15 @@ def get_student_analytics(user_id: str) -> dict[str, Any]:
         {"label": "Learning Streak", "value": f"{user.get('streak', 0)} days", "icon": "Flame"},
     ]
     
+    skills_map = {}
+    for enr in enrollments:
+        course = all_courses.get(enr["courseId"])
+        if course:
+            cat = course.get("category") or "General"
+            skills_map.setdefault(cat, []).append(enr.get("progress", 0))
+            
+    skills = [{"name": cat, "progress": int(sum(progs)/len(progs))} for cat, progs in skills_map.items()]
+    
     return {
         "student_id": user["id"],
         "xp": int(user.get("xp", 0)),
@@ -1238,6 +1284,7 @@ def get_student_analytics(user_id: str) -> dict[str, Any]:
         "recommendedCourses": course_recommendations(user["id"]),
         "stats": stats,
         "weakTopics": [t["topic"] for t in weak_topics(user["id"])],
+        "skills": skills,
         "recentChats": list_chat_history(user["id"]),
         "certificates": list_certificates(user["id"]),
     }
@@ -1245,7 +1292,7 @@ def get_student_analytics(user_id: str) -> dict[str, Any]:
 
 def get_teacher_analytics(teacher_id: str) -> dict[str, Any]:
     courses = list_courses()
-    teacher = get_user_by_id(teacher_id) or get_default_user("admin")
+    teacher = get_user_by_id(teacher_id) or get_default_user("teacher")
     owned = [course for course in courses if course.get("teacherId") == teacher["id"]]
     student_estimate = sum(int(course.get("studentsCount", 0)) for course in owned)
     completion = [int(course.get("progress", 0)) for course in owned] or [0]
@@ -1295,6 +1342,112 @@ def get_teacher_analytics(teacher_id: str) -> dict[str, Any]:
         "recentSubmissions": recent_subs,
         "stats": stats
     }
+
+
+def admin_create_user(email: str, name: str, role: str) -> dict[str, Any]:
+    user = {
+        "id": f"usr-{uuid.uuid4().hex[:10]}",
+        "email": email,
+        "password": "password123",
+        "name": name,
+        "role": role,
+        "xp": 0,
+        "streak": 0,
+        "badges": [],
+        "studyHours": [0, 0, 0, 0, 0, 0, 0],
+        "weakTopics": [],
+        "certificates": [],
+        "createdAt": _now_iso(),
+    }
+    with _LOCK:
+        state = _load_unlocked()
+        state["users"].append(user)
+        state["settings"][user["id"]] = _default_settings()
+        _save_unlocked(state)
+    return deepcopy(user)
+
+def list_categories() -> list[dict[str, Any]]:
+    with _LOCK:
+        return deepcopy(_load_unlocked().get("categories", []))
+
+def create_category(name: str, slug: str, description: str, icon: str) -> dict[str, Any]:
+    cat = {
+        "id": f"cat-{uuid.uuid4().hex[:10]}",
+        "name": name,
+        "slug": slug,
+        "description": description,
+        "icon": icon,
+    }
+    with _LOCK:
+        state = _load_unlocked()
+        if "categories" not in state:
+            state["categories"] = []
+        state["categories"].append(cat)
+        _save_unlocked(state)
+    return deepcopy(cat)
+
+def update_category(cat_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    with _LOCK:
+        state = _load_unlocked()
+        for cat in state.get("categories", []):
+            if cat.get("id") == cat_id:
+                for k, v in updates.items():
+                    cat[k] = v
+                _save_unlocked(state)
+                return deepcopy(cat)
+    return None
+
+def delete_category(cat_id: str) -> bool:
+    with _LOCK:
+        state = _load_unlocked()
+        original_len = len(state.get("categories", []))
+        state["categories"] = [c for c in state.get("categories", []) if c.get("id") != cat_id]
+        if len(state["categories"]) != original_len:
+            _save_unlocked(state)
+            return True
+    return False
+
+def list_all_enrollments() -> list[dict[str, Any]]:
+    with _LOCK:
+        state = _load_unlocked()
+        users_map = {u["id"]: u for u in state.get("users", [])}
+        courses_map = {c["id"]: c for c in state.get("courses", [])}
+        
+        results = []
+        for enr in state.get("enrollments", []):
+            uid = enr.get("userId")
+            cid = enr.get("courseId")
+            
+            user = users_map.get(uid)
+            course = courses_map.get(cid)
+            if user and course:
+                results.append({
+                    "id": enr.get("id", f"{uid}-{cid}"),
+                    "userId": uid,
+                    "userName": user.get("name"),
+                    "userEmail": user.get("email"),
+                    "courseId": cid,
+                    "courseTitle": course.get("title"),
+                    "progress": enr.get("progress", 0),
+                    "enrolledAt": enr.get("enrolledAt", _now_iso())
+                })
+        return results
+
+def delete_enrollment(enrollment_id: str) -> bool:
+    with _LOCK:
+        state = _load_unlocked()
+        original_len = len(state.get("enrollments", []))
+        
+        if "-" in enrollment_id and not enrollment_id.startswith("enr-"):
+            uid, cid = enrollment_id.split("-", 1)
+            state["enrollments"] = [e for e in state["enrollments"] if not (e.get("userId") == uid and e.get("courseId") == cid)]
+        else:
+            state["enrollments"] = [e for e in state["enrollments"] if e.get("id") != enrollment_id]
+            
+        if len(state["enrollments"]) != original_len:
+            _save_unlocked(state)
+            return True
+    return False
 
 
 def get_admin_analytics() -> dict[str, Any]:
@@ -1409,266 +1562,3 @@ def get_admin_analytics() -> dict[str, Any]:
         "category_breakdown": category_rows,
         "recent_activity": activity_rows[:6],
     }
-
-
-def _system_admin_doc(existing: dict[str, Any] | None = None) -> dict[str, Any]:
-    from utils.security import get_password_hash, verify_password
-
-    password = (existing or {}).get("password") or (existing or {}).get("hashedPassword") or ""
-    if not password.startswith("$2") or not verify_password(settings.DEFAULT_ADMIN_PASSWORD, password):
-        password = get_password_hash(settings.DEFAULT_ADMIN_PASSWORD)
-
-    return {
-        "id": settings.DEFAULT_ADMIN_ID,
-        "name": settings.DEFAULT_ADMIN_NAME,
-        "email": settings.DEFAULT_ADMIN_EMAIL.lower(),
-        "password": password,
-        "role": "admin",
-        "xp": int((existing or {}).get("xp", 0)),
-        "streak": int((existing or {}).get("streak", 0)),
-        "badges": list((existing or {}).get("badges", [])),
-        "studyHours": list((existing or {}).get("studyHours", [0, 0, 0, 0, 0, 0, 0])),
-        "weakTopics": list((existing or {}).get("weakTopics", [])),
-        "certificates": list((existing or {}).get("certificates", [])),
-        "active": True,
-        "createdAt": (existing or {}).get("createdAt") or _now_iso(),
-    }
-
-
-def ensure_system_admin() -> dict[str, Any]:
-    with _LOCK:
-        state = _load_unlocked()
-        users = state.setdefault("users", [])
-        existing = next(
-            (
-                user for user in users
-                if user.get("id") == settings.DEFAULT_ADMIN_ID
-                or user.get("email", "").lower() == settings.DEFAULT_ADMIN_EMAIL.lower()
-            ),
-            None,
-        )
-        admin_user = _system_admin_doc(existing)
-        if existing:
-            existing.clear()
-            existing.update(admin_user)
-        else:
-            users.insert(0, admin_user)
-        state.setdefault("settings", {})[settings.DEFAULT_ADMIN_ID] = state.setdefault("settings", {}).get(
-            settings.DEFAULT_ADMIN_ID,
-            _default_settings(),
-        )
-        _save_unlocked(state)
-        return _public_user(admin_user)
-
-
-def purge_demo_data() -> dict[str, int]:
-    with _LOCK:
-        state = _load_unlocked()
-        users = state.setdefault("users", [])
-        existing_admin = next(
-            (
-                user for user in users
-                if user.get("id") == settings.DEFAULT_ADMIN_ID
-                or user.get("email", "").lower() == settings.DEFAULT_ADMIN_EMAIL.lower()
-            ),
-            None,
-        )
-        admin_user = _system_admin_doc(existing_admin)
-        deleted = {
-            "users": max(0, len(users) - 1),
-            "courses": len(state.get("courses", [])),
-            "categories": len(state.get("categories", [])),
-            "enrollments": len(state.get("enrollments", [])),
-            "assignments": len(state.get("assignments", [])),
-            "submissions": len(state.get("submissions", [])),
-            "materials": len(state.get("materials", [])),
-            "chatHistory": len(state.get("chatHistory", [])),
-            "notifications": len(state.get("notifications", [])),
-            "notes": len(state.get("notes", [])),
-            "flashcards": len(state.get("flashcards", [])),
-            "quiz_submissions": len(state.get("quiz_submissions", [])),
-            "settings": max(0, len(state.get("settings", {})) - 1),
-        }
-        state.update(
-            {
-                "users": [admin_user],
-                "courses": [],
-                "categories": [],
-                "enrollments": [],
-                "assignments": [],
-                "submissions": [],
-                "materials": [],
-                "chatHistory": [],
-                "notifications": [],
-                "notes": [],
-                "flashcards": [],
-                "quiz_submissions": [],
-                "settings": {settings.DEFAULT_ADMIN_ID: _default_settings()},
-            }
-        )
-        _save_unlocked(state)
-        return deleted
-
-
-
-def get_teacher_students(teacher_id: str) -> list[dict[str, Any]]:
-    # Simplified implementation based on monolithic JSON state
-    courses = [c for c in list_courses() if c.get('teacherId') == teacher_id]
-    course_ids = {c['id'] for c in courses}
-    with _LOCK:
-        state = _load_unlocked()
-        enrollments = state.get('enrollments', [])
-        users = state.get('users', [])
-        
-    student_ids = {e['userId'] for e in enrollments if e['courseId'] in course_ids}
-    students = [u for u in users if u['id'] in student_ids]
-    return [_public_user(s) for s in students]
-
-def admin_create_user(email: str, name: str, role: str) -> dict[str, Any]:
-    from utils.security import get_password_hash
-    with _LOCK:
-        state = _load_unlocked()
-        users = state.setdefault('users', [])
-        # Check if exists
-        for u in users:
-            if u.get('email') == email:
-                return _public_user(u)
-        
-        new_user = {
-            'id': f'user-{uuid.uuid4().hex[:8]}',
-            'email': email,
-            'name': name,
-            'role': role,
-            'password': get_password_hash('Password@123'),
-            'createdAt': _now_iso(),
-            'department': 'General'
-        }
-        users.append(new_user)
-        _save_unlocked(state)
-        return _public_user(new_user)
-
-
-
-def issue_course_certificate(user_id: str, course_id: str, score: int) -> dict[str, Any] | None:
-    if score < 75: return None
-    course = get_course(course_id)
-    if not course: return None
-    return issue_certificate(user_id, f"Completion: {course.get('title', 'Course')}", course_id)
-
-def record_quiz_submission(user_id: str, course_id: str, score: int) -> dict[str, Any]:
-    doc = {
-        'id': f'qs-{uuid.uuid4().hex[:8]}',
-        'userId': user_id,
-        'courseId': course_id,
-        'score': score,
-        'submittedAt': _now_iso()
-    }
-    with _LOCK:
-        state = _load_unlocked()
-        state.setdefault('quiz_submissions', []).append(doc)
-        _save_unlocked(state)
-        
-    if score >= 50:
-        award_xp(user_id, score * 2)
-        
-    return doc
-
-def get_student_analytics_results(user_id: str) -> dict[str, Any]:
-    with _LOCK:
-        state = _load_unlocked()
-        quizzes = [q for q in state.get('quiz_submissions', []) if q.get('userId') == user_id]
-        assignments = [a for a in state.get('submissions', []) if a.get('userId') == user_id]
-    
-    total_quizzes = len(quizzes)
-    assignments_submitted = len(assignments)
-    
-    total_score = sum(q.get('score', 0) for q in quizzes)
-    graded_assignments = [a for a in assignments if a.get('score') is not None]
-    total_score += sum(a.get('score', 0) for a in graded_assignments)
-    
-    total_graded = total_quizzes + len(graded_assignments)
-    avg_score = int(total_score / total_graded) if total_graded > 0 else 0
-    
-    recent = []
-    for i, q in enumerate(sorted(quizzes, key=lambda x: x.get('submittedAt', ''), reverse=True)[:5]):
-        recent.append({'name': f'Quiz {i+1}', 'score': q.get('score', 0), 'date': q.get('submittedAt')})
-        
-    for i, a in enumerate(sorted(graded_assignments, key=lambda x: x.get('submittedAt', ''), reverse=True)[:5]):
-        recent.append({'name': f'Assign {i+1}', 'score': a.get('score', 0), 'date': a.get('submittedAt')})
-        
-    recent = sorted(recent, key=lambda x: x.get('date', ''), reverse=True)[:5]
-    
-    user_stats = get_user_stats(user_id)
-    
-    return {
-        'overview': {
-            'averageScore': avg_score,
-            'totalQuizzes': total_quizzes,
-            'assignmentsSubmitted': assignments_submitted,
-            'learningHours': user_stats.get('studyHours', 0)
-        },
-        'recentScores': recent
-    }
-
-
-
-def grade_submission(submission_id: str, score: int, feedback: str) -> dict[str, Any] | None:
-    with _LOCK:
-        state = _load_unlocked()
-        for sub in state.get('submissions', []):
-            if sub.get('id') == submission_id:
-                sub['score'] = score
-                sub['feedback'] = feedback
-                _save_unlocked(state)
-                return sub
-        return None
-
-def list_all_enrollments() -> list[dict[str, Any]]:
-    with _LOCK:
-        state = _load_unlocked()
-        return deepcopy(list(state.get('enrollments', [])))
-
-def delete_enrollment(enrollment_id: str) -> bool:
-    with _LOCK:
-        state = _load_unlocked()
-        original_len = len(state.get('enrollments', []))
-        state['enrollments'] = [e for e in state.get('enrollments', []) if e.get('id') != enrollment_id]
-        if len(state['enrollments']) != original_len:
-            _save_unlocked(state)
-            return True
-        return False
-
-def list_categories() -> list[dict[str, Any]]:
-    with _LOCK:
-        state = _load_unlocked()
-        return deepcopy(list(state.get('categories', [])))
-
-def create_category(category: dict[str, Any]) -> dict[str, Any]:
-    doc = deepcopy(category)
-    doc['id'] = f'cat-{uuid.uuid4().hex[:8]}'
-    with _LOCK:
-        state = _load_unlocked()
-        state.setdefault('categories', []).append(doc)
-        _save_unlocked(state)
-        return doc
-
-def update_category(category_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
-    with _LOCK:
-        state = _load_unlocked()
-        for cat in state.get('categories', []):
-            if cat.get('id') == category_id:
-                cat.update(updates)
-                _save_unlocked(state)
-                return cat
-        return None
-
-def delete_category(category_id: str) -> bool:
-    with _LOCK:
-        state = _load_unlocked()
-        original_len = len(state.get('categories', []))
-        state['categories'] = [c for c in state.get('categories', []) if c.get('id') != category_id]
-        if len(state['categories']) != original_len:
-            _save_unlocked(state)
-            return True
-        return False
-

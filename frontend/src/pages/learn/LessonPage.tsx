@@ -25,7 +25,8 @@ export default function LessonPage() {
   const { courseId, lessonId } = useParams()
   const { t } = useLanguage()
   const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTab, setCurrentTab] = useState<'content' | 'notes' | 'ai'>('content')
+  const [currentTab, setCurrentTab] = useState<'content' | 'notes'>('content')
+  const [sidebarTab, setSidebarTab] = useState<'curriculum' | 'tutor'>('tutor')
   const [showSidebar] = useState(true)
 
   const [lessons, setLessons] = useState<any[]>([])
@@ -146,7 +147,6 @@ export default function LessonPage() {
             {[
               { id: 'content', label: 'Content' },
               { id: 'notes', label: 'AI Notes' },
-              { id: 'ai', label: 'AI Tutor' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -157,7 +157,6 @@ export default function LessonPage() {
                     : 'text-secondary-600 hover:text-secondary-900'
                 }`}
               >
-                {tab.id === 'ai' && <Brain className="w-4 h-4" />}
                 {tab.id === 'notes' && <FileText className="w-4 h-4" />}
                 {tab.label}
               </button>
@@ -189,10 +188,6 @@ export default function LessonPage() {
               </div>
             </div>
           )}
-
-          {currentTab === 'ai' && (
-            <AITutorChat />
-          )}
         </div>
 
         {/* Footer Navigation */}
@@ -222,34 +217,62 @@ export default function LessonPage() {
 
       {/* Sidebar */}
       {showSidebar && (
-        <div className="w-80 border-l border-secondary-200 bg-white overflow-y-auto">
-          <div className="p-4">
-            <h3 className="font-semibold text-secondary-900 mb-4">Course Content</h3>
-            <div className="space-y-2">
-              {lessons.map((lesson, index) => (
-                <Link
-                  key={lesson.id}
-                  to={`/learn/${courseId}/lesson/${lesson.id}`}
-                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                    String(lesson.id) === String(lessonId)
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'hover:bg-secondary-50 text-secondary-700'
-                  }`}
-                >
-                  <span className="text-sm font-medium">
-                    {lesson.completed ? (
-                      <CheckCircle className="w-5 h-5 text-accent-500" />
-                    ) : (
-                      <span className="w-5 h-5 rounded-full border-2 border-secondary-300 flex items-center justify-center text-xs">
-                        {index + 1}
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex-1 text-sm truncate">{lesson.title}</span>
-                  <span className="text-xs text-secondary-500">{lesson.duration}</span>
-                </Link>
-              ))}
-            </div>
+        <div className="w-80 lg:w-96 border-l border-secondary-200 bg-white flex flex-col">
+          <div className="flex border-b border-secondary-200">
+            <button
+              onClick={() => setSidebarTab('curriculum')}
+              className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors ${
+                sidebarTab === 'curriculum'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-secondary-600 hover:text-secondary-900'
+              }`}
+            >
+              Curriculum
+            </button>
+            <button
+              onClick={() => setSidebarTab('tutor')}
+              className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${
+                sidebarTab === 'tutor'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-secondary-600 hover:text-secondary-900'
+              }`}
+            >
+              <Brain className="w-4 h-4" /> AI Tutor
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {sidebarTab === 'curriculum' ? (
+              <div className="p-4 space-y-2">
+                {lessons.map((lesson, index) => (
+                  <Link
+                    key={lesson.id}
+                    to={`/learn/${courseId}/lesson/${lesson.id}`}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                      String(lesson.id) === String(lessonId)
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'hover:bg-secondary-50 text-secondary-700'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">
+                      {lesson.completed ? (
+                        <CheckCircle className="w-5 h-5 text-accent-500" />
+                      ) : (
+                        <span className="w-5 h-5 rounded-full border-2 border-secondary-300 flex items-center justify-center text-xs">
+                          {index + 1}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex-1 text-sm truncate">{lesson.title}</span>
+                    <span className="text-xs text-secondary-500">{lesson.duration}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="h-full p-4 flex flex-col">
+                <AITutorChat />
+              </div>
+            )}
           </div>
         </div>
       )}

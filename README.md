@@ -378,6 +378,7 @@ Settings
 # 🔄 Learning Workflow
 
 ```
+
 Teacher Creates Course
         │
         ▼
@@ -504,3 +505,14 @@ GitHub: https://github.com/abhi30052004
 Repository: https://github.com/abhi30052004/LearningManagement
 
 ---
+
+#   Exectution
+cd frontend
+npm install
+npm run dev
+
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn main:app --reload

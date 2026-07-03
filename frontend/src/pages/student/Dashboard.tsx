@@ -54,7 +54,7 @@ export default function StudentDashboard() {
     Flame
   }
 
-  const { enrolledCourses = [], recommendedCourses = [], stats = [], weakTopics = [], recentChats = [], certificates = [] } = data || {}
+  const { enrolledCourses = [], recommendedCourses = [], stats = [], skills = [], recentChats = [], certificates = [] } = data || {}
 
   return (
     <div className="space-y-6">
@@ -104,7 +104,7 @@ export default function StudentDashboard() {
             <div key={course.id} className="card-hover overflow-hidden">
               <div className="relative h-36">
                 <img
-                  src={course.thumbnail}
+                  src={course.image || course.thumbnail}
                   alt={course.title}
                   className="w-full h-full object-cover"
                 />
@@ -146,7 +146,7 @@ export default function StudentDashboard() {
             {recommendedCourses.map((course: any) => (
               <div key={course.id} className="flex gap-3 p-3 rounded-lg hover:bg-secondary-50 transition-colors cursor-pointer">
                 <img
-                  src={course.thumbnail}
+                  src={course.image || course.thumbnail}
                   alt={course.title}
                   className="w-20 h-20 rounded-lg object-cover"
                 />
@@ -162,22 +162,32 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Weak Topics & Recent Chat */}
+        {/* Skills & Recent Chat */}
         <div className="space-y-6">
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-secondary-900 mb-3 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-warning-500" />
-              Topics to Review
+            <h3 className="text-sm font-semibold text-secondary-900 mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary-500" />
+              Skills & Technologies
             </h3>
-            <div className="space-y-2">
-              {weakTopics.map((topic: string, i: number) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-secondary-50">
-                  <span className="text-sm text-secondary-700">{topic}</span>
-                  <button className="text-xs text-primary-600 font-medium hover:underline">
-                    Practice
-                  </button>
-                </div>
-              ))}
+            <div className="space-y-4">
+              {skills && skills.length > 0 ? (
+                skills.map((skill: any, i: number) => (
+                  <div key={i} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-secondary-900">{skill.name}</span>
+                      <span className="text-secondary-500">{skill.progress}%</span>
+                    </div>
+                    <div className="h-1.5 bg-secondary-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary-500 rounded-full transition-all duration-500"
+                        style={{ width: `${skill.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-secondary-500 text-center py-2">Enroll in courses to track your skills.</p>
+              )}
             </div>
           </div>
 

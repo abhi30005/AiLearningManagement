@@ -4,10 +4,12 @@ import os
 
 from config import settings
 from database import get_database_status
+from state_store import ensure_system_admin
 
 # Import routers
 from routers import auth, users, courses, materials, rag, tutor, ai_content
 from routers import assessments, collaboration, search, analytics, gamification, reports, notifications, support
+from routers import categories, enrollments
 
 app = FastAPI(
     title=f"{settings.APP_NAME} API",
@@ -44,6 +46,12 @@ app.include_router(gamification.router)
 app.include_router(reports.router)
 app.include_router(notifications.router)
 app.include_router(support.router)
+app.include_router(categories.router)
+app.include_router(enrollments.router)
+
+@app.on_event("startup")
+async def bootstrap_system_admin():
+    ensure_system_admin()
 
 @app.get("/")
 async def root():

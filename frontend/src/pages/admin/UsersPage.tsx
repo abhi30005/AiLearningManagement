@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiFetch } from '../../lib/api'
 import {
   Search,
   Plus,
@@ -8,79 +9,61 @@ import {
   Edit,
   Trash2,
   UserCheck,
-  UserX,
 } from 'lucide-react'
 
-const users = [
-  {
-    id: 1,
-    name: 'Alice Johnson',
-    email: 'alice@example.com',
-    role: 'student',
-    status: 'active',
-    courses: 5,
-    progress: 72,
-    joined: '2023-10-15',
-    avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 2,
-    name: 'Dr. Bob Smith',
-    email: 'bob@example.com',
-    role: 'teacher',
-    status: 'active',
-    courses: 3,
-    students: 234,
-    joined: '2023-08-20',
-    avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 3,
-    name: 'Carol White',
-    email: 'carol@example.com',
-    role: 'student',
-    status: 'inactive',
-    courses: 2,
-    progress: 45,
-    joined: '2024-01-10',
-    avatar: null,
-  },
-  {
-    id: 4,
-    name: 'David Brown',
-    email: 'david@example.com',
-    role: 'student',
-    status: 'active',
-    courses: 8,
-    progress: 88,
-    joined: '2023-09-05',
-    avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-  {
-    id: 5,
-    name: 'Prof. Emily Davis',
-    email: 'emily@example.com',
-    role: 'teacher',
-    status: 'active',
-    courses: 5,
-    students: 567,
-    joined: '2023-07-12',
-    avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100',
-  },
-]
-
-export default function UsersPage() {
+export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: string }) {
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [selectedUser, setSelectedUser] = useState<number | null>(null)
+  const [roleFilter, setRoleFilter] = useState(defaultRole)
+  const [users, setUsers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
+
+  // New user form state
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: defaultRole })
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  // Sync role filter with prop
+  useEffect(() => {
+    setRoleFilter(defaultRole)
+  }, [defaultRole])
+
+  const fetchUsers = async () => {
+    try {
+      const data = await apiFetch<any>('/users')
+      setUsers(data.users || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddUser = async () => {
+    try {
+      const res = await apiFetch<any>('/users', {
+        method: 'POST',
+        body: JSON.stringify(newUser)
+      })
+      if (res.success) {
+        setUsers([...users, res.user])
+        setShowAddForm(false)
+        setNewUser({ name: '', email: '', role: defaultRole })
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to add user")
+    }
+  }
 
   const filteredUsers = users.filter((user) => {
-    const matchesSearch = user.name.toLowerCase().includes(search.toLowerCase()) ||
-      user.email.toLowerCase().includes(search.toLowerCase())
+    const matchesSearch = user.name?.toLowerCase().includes(search.toLowerCase()) ||
+      user.email?.toLowerCase().includes(search.toLowerCase())
     const matchesRole = roleFilter === 'all' || user.role === roleFilter
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter
-    return matchesSearch && matchesRole && matchesStatus
+    return matchesSearch && matchesRole
   })
 
   const getRoleBadge = (role: string) => {
@@ -96,24 +79,37 @@ export default function UsersPage() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    return status === 'active'
-      ? <span className="flex items-center gap-1 text-accent-600"><UserCheck className="w-4 h-4" /> Active</span>
-      : <span className="flex items-center gap-1 text-secondary-500"><UserX className="w-4 h-4" /> Inactive</span>
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-secondary-900">User Management</h1>
-          <p className="text-secondary-600">Manage all users, roles, and permissions</p>
+          <h1 className="text-2xl font-bold text-secondary-900">
+             {defaultRole === 'teacher' ? 'Teacher Management' : defaultRole === 'student' ? 'Student Management' : 'User Management'}
+          </h1>
+          <p className="text-secondary-600">Manage {defaultRole}s, roles, and permissions</p>
         </div>
-        <button className="btn-primary">
+        <button onClick={() => setShowAddForm(true)} className="btn-primary">
           <Plus className="w-4 h-4" />
-          Add User
+          Add {defaultRole.charAt(0).toUpperCase() + defaultRole.slice(1)}
         </button>
       </div>
+
+      {showAddForm && (
+        <div className="card p-5 border-l-4 border-primary-500">
+           <h3 className="text-lg font-semibold mb-3">Add New {defaultRole}</h3>
+           <div className="flex gap-4">
+              <input type="text" placeholder="Name" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="input flex-1" />
+              <input type="email" placeholder="Email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className="input flex-1" />
+              <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} className="input flex-1">
+                 <option value="student">Student</option>
+                 <option value="teacher">Teacher</option>
+                 <option value="admin">Admin</option>
+              </select>
+              <button onClick={handleAddUser} className="btn-primary">Save User</button>
+              <button onClick={() => setShowAddForm(false)} className="btn-secondary">Cancel</button>
+           </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card p-4">
@@ -139,21 +135,15 @@ export default function UsersPage() {
               <option value="teacher">Teacher</option>
               <option value="student">Student</option>
             </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input w-auto"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
           </div>
         </div>
       </div>
 
       {/* Users Table */}
       <div className="card overflow-hidden">
+        {loading ? (
+           <div className="p-8 text-center text-secondary-500">Loading users...</div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-secondary-50">
@@ -161,27 +151,22 @@ export default function UsersPage() {
                 <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">User</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Role</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Status</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Activity</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Joined</th>
                 <th className="py-3 px-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-200">
-              {filteredUsers.map((user) => (
+              {filteredUsers.length === 0 ? (
+                <tr>
+                   <td colSpan={5} className="p-8 text-center text-secondary-500">No users found.</td>
+                </tr>
+              ) : filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-secondary-50 transition-colors">
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center text-white font-medium">
-                          {user.name.charAt(0)}
-                        </div>
-                      )}
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center text-white font-medium">
+                          {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                      </div>
                       <div>
                         <p className="font-medium text-secondary-900">{user.name}</p>
                         <p className="text-sm text-secondary-500">{user.email}</p>
@@ -189,18 +174,11 @@ export default function UsersPage() {
                     </div>
                   </td>
                   <td className="py-4 px-4">{getRoleBadge(user.role)}</td>
-                  <td className="py-4 px-4 text-sm">{getStatusBadge(user.status)}</td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm">
-                      {user.role === 'teacher' ? (
-                        <span>{user.courses} courses, {user.students} students</span>
-                      ) : (
-                        <span>{user.courses} courses, {user.progress}% avg progress</span>
-                      )}
-                    </div>
+                  <td className="py-4 px-4 text-sm">
+                    <span className="flex items-center gap-1 text-accent-600"><UserCheck className="w-4 h-4" /> Active</span>
                   </td>
                   <td className="py-4 px-4 text-sm text-secondary-500">
-                    {new Date(user.joined).toLocaleDateString()}
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="py-4 px-4">
                     <div className="relative">
@@ -225,11 +203,6 @@ export default function UsersPage() {
                             <Shield className="w-4 h-4" />
                             Change Role
                           </button>
-                          <hr className="my-1 border-secondary-200" />
-                          <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-error-600 hover:bg-error-50">
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
                         </div>
                       )}
                     </div>
@@ -239,15 +212,7 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between p-4 border-t border-secondary-200">
-          <p className="text-sm text-secondary-600">Showing {filteredUsers.length} of {users.length} users</p>
-          <div className="flex items-center gap-2">
-            <button className="btn-sm btn-secondary" disabled>Previous</button>
-            <button className="btn-sm btn-secondary">Next</button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )
