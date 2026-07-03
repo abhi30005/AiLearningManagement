@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import { useLanguage } from '../../lib/language-context'
+import { useAuth } from '../../lib/auth-context'
 import { PageLoader } from '../../components/ui/PageLoader'
 import {
   PlayCircle,
@@ -21,6 +22,7 @@ import {
 export default function CourseDetailPage() {
   const { id } = useParams()
   const { t } = useLanguage()
+  const { user } = useAuth()
   const [expandedModule, setExpandedModule] = useState<number | null>(1)
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [courseData, setCourseData] = useState<any>(null)
@@ -31,6 +33,13 @@ export default function CourseDetailPage() {
       try {
         const data = await apiFetch<any>(`/courses/${id}`)
         setCourseData(data)
+        
+        if (user) {
+          const enrRes = await apiFetch<any>(`/enrollments/user/${user.id}`)
+          if (enrRes.enrollments?.some((e: any) => e.courseId === id)) {
+            setIsEnrolled(true)
+          }
+        }
       } catch (error) {
         console.error('Error fetching course details:', error)
       } finally {
@@ -38,10 +47,19 @@ export default function CourseDetailPage() {
       }
     }
     fetchCourse()
-  }, [id])
+  }, [id, user])
 
-  const handleEnroll = () => {
-    setIsEnrolled(true)
+  const handleEnroll = async () => {
+    if (!user) return
+    try {
+      await apiFetch('/enrollments/', {
+        method: 'POST',
+        body: JSON.stringify({ userId: user.id, courseId: id })
+      })
+      setIsEnrolled(true)
+    } catch (error) {
+      console.error('Enrollment failed', error)
+    }
   }
 
   if (loading) {

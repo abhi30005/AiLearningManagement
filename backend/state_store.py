@@ -965,8 +965,10 @@ def course_recommendations(user_id: str) -> list[dict[str, Any]]:
         reason_topic = topics[index % len(topics)]["topic"] if topics else course["category"]
         recs.append(
             {
-                "id": f"rec-{course['id']}",
+                "id": course["id"],
                 "title": course["title"],
+                "image": course.get("image"),
+                "thumbnail": course.get("thumbnail"),
                 "match": f"{94 - (index * 4)}% AI Match",
                 "category": course["category"],
                 "reason": f"Suggested to improve: {reason_topic}",

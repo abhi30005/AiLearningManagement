@@ -83,9 +83,8 @@ export default function Layout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-secondary-200 z-50 transform transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-secondary-200 z-50 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
@@ -107,10 +106,9 @@ export default function Layout() {
                     to={item.path}
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900'
+                      `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900'
                       }`
                     }
                   >
@@ -122,27 +120,10 @@ export default function Layout() {
             </ul>
           </nav>
 
-          {/* User Menu Footer */}
-          <div className="p-4 border-t border-secondary-200">
-            <NavLink
-              to="/profile"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900 transition-colors"
-            >
-              <User className="w-5 h-5" />
-              {t('common.profile')}
-            </NavLink>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900 transition-colors w-full"
-            >
-              <LogOut className="w-5 h-5" />
-              {t('common.logout')}
-            </button>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* Main Content */}
+        {/* Main Content */}
       <div className="lg:pl-64">
         {/* Header */}
         <header className="sticky top-0 bg-white border-b border-secondary-200 z-30">
@@ -181,11 +162,10 @@ export default function Layout() {
                           setLanguage(lang.code)
                           setLangMenuOpen(false)
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${
-                          language === lang.code
+                        className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${language === lang.code
                             ? 'bg-primary-50 text-primary-700'
                             : 'text-secondary-700 hover:bg-secondary-50'
-                        }`}
+                          }`}
                       >
                         <span className="font-medium">{lang.flag}</span>
                         <span>{lang.label}</span>

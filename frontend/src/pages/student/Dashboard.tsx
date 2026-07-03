@@ -5,15 +5,18 @@ import { apiFetch } from '../../lib/api'
 import { PageLoader } from '../../components/ui/PageLoader'
 import {
   BookOpen,
+  Award,
   Clock,
   TrendingUp,
-  Flame,
   PlayCircle,
-  Award,
-  ChevronRight,
-  Brain,
   Target,
+  Brain,
+  MessageSquare,
+  ChevronRight,
+  Flame,
+  Plus
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 
 
@@ -23,21 +26,36 @@ export default function StudentDashboard() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        // We use user?.id or a default string so the backend can resolve it
-        const studentId = user?.id || 'current' 
-        const result = await apiFetch<any>(`/analytics/student/${studentId}`)
-        setData(result)
-      } catch (error) {
-        console.error('Error fetching analytics:', error)
-      } finally {
-        setLoading(false)
-      }
+  const fetchAnalytics = async () => {
+    try {
+      const studentId = user?.id || 'current' 
+      const result = await apiFetch<any>(`/analytics/student/${studentId}`)
+      setData(result)
+    } catch (error) {
+      console.error('Error fetching analytics:', error)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     if (user) fetchAnalytics()
   }, [user])
+
+  const handleQuickEnroll = async (e: React.MouseEvent, courseId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!user) return
+    try {
+      await apiFetch('/enrollments/', {
+        method: 'POST',
+        body: JSON.stringify({ userId: user.id, courseId })
+      })
+      fetchAnalytics() // refresh the dashboard
+    } catch (error) {
+      console.error('Enrollment failed', error)
+    }
+  }
 
   if (loading) {
     return <PageLoader type="dashboard" />
@@ -139,22 +157,39 @@ export default function StudentDashboard() {
             <Target className="w-5 h-5 text-primary-600" />
             Recommended for You
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {recommendedCourses.map((course: any) => (
-              <div key={course.id} className="flex gap-3 p-3 rounded-lg hover:bg-secondary-50 transition-colors cursor-pointer">
-                <img
-                  src={course.image || course.thumbnail}
-                  alt={course.title}
-                  className="w-20 h-20 rounded-lg object-cover"
-                />
-                <div className="flex-1">
-                  <h4 className="font-medium text-secondary-900">{course.title}</h4>
-                  <p className="text-sm text-secondary-600">{course.reason}</p>
-                  <button className="text-sm text-primary-600 font-medium mt-1 flex items-center gap-1 hover:underline">
-                    View Course <ChevronRight className="w-4 h-4" />
+              <Link key={course.id} to={`/courses/${course.id}`} className="card overflow-hidden group cursor-pointer border border-secondary-100 hover:border-primary-200 transition-all hover:shadow-md flex flex-col">
+                <div className="relative h-32 overflow-hidden bg-secondary-100">
+                  <img
+                    src={course.image || course.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80'}
+                    alt={course.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-2 left-2">
+                    <span className="px-1.5 py-0.5 bg-white/90 backdrop-blur-sm rounded text-[10px] font-medium text-secondary-700 shadow-sm">
+                      {course.category || 'General'}
+                    </span>
+                  </div>
+                  <div className="absolute top-2 right-2">
+                    <span className="px-1.5 py-0.5 bg-accent-500/90 backdrop-blur-sm text-white rounded text-[10px] font-medium shadow-sm">
+                      {course.match || 'High Match'}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 flex flex-col flex-1">
+                  <h4 className="font-semibold text-sm text-secondary-900 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                    {course.title}
+                  </h4>
+                  <p className="text-xs text-secondary-600 mt-1 line-clamp-2 mb-3 flex-1">{course.reason}</p>
+                  <button 
+                    onClick={(e) => handleQuickEnroll(e, course.id)} 
+                    className="btn-primary w-full py-1.5 text-xs flex justify-center items-center gap-1 mt-auto"
+                  >
+                    <Plus className="w-3 h-3" /> Enroll Now
                   </button>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

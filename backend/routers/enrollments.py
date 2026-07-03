@@ -1,8 +1,20 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
-from state_store import list_all_enrollments, delete_enrollment, list_enrollments, get_course
+from state_store import list_all_enrollments, delete_enrollment, list_enrollments, get_course, enroll_user_in_course
 
 router = APIRouter(prefix="/enrollments", tags=["Enrollments Management"])
+
+class EnrollRequest(BaseModel):
+    userId: str
+    courseId: str
+
+@router.post("/")
+async def create_enrollment(req: EnrollRequest):
+    enrollment = enroll_user_in_course(req.userId, req.courseId)
+    if not enrollment:
+        raise HTTPException(status_code=400, detail="Could not enroll user")
+    return {"enrollment": enrollment}
 
 @router.get("/")
 async def get_enrollments():
