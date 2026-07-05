@@ -7,7 +7,8 @@ import {
   Edit2,
   Trash2,
   Users,
-  Plus
+  Plus,
+  Eye
 } from 'lucide-react'
 
 export default function AdminCoursesPage() {
@@ -131,7 +132,13 @@ export default function AdminCoursesPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                         <button onClick={() => handleDelete(course.id)} className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors">
+                         <button onClick={() => navigate(`/courses/${course.id}`)} className="p-2 text-secondary-600 hover:bg-secondary-100 rounded-lg transition-colors" title="View Course">
+                            <Eye className="w-4 h-4" />
+                         </button>
+                         <button onClick={() => navigate(`/courses/${course.id}/edit`)} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit Course">
+                            <Edit2 className="w-4 h-4" />
+                         </button>
+                         <button onClick={() => handleDelete(course.id)} className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors" title="Delete Course">
                             <Trash2 className="w-4 h-4" />
                          </button>
                       </div>

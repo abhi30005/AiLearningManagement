@@ -123,6 +123,7 @@ function AppRoutes() {
 
         {/* Admin Routes */}
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage defaultRole="all" /></ProtectedRoute>} />
+        <Route path="/admin/my-courses" element={<ProtectedRoute allowedRoles={['admin']}><TeacherCoursesPage /></ProtectedRoute>} />
         <Route path="/admin/courses" element={<ProtectedRoute allowedRoles={['admin']}><AdminCoursesPage /></ProtectedRoute>} />
         <Route path="/admin/categories" element={<ProtectedRoute allowedRoles={['admin']}><AdminCategoriesPage /></ProtectedRoute>} />
         <Route path="/admin/enrollments" element={<ProtectedRoute allowedRoles={['admin']}><AdminEnrollmentsPage /></ProtectedRoute>} />

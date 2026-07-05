@@ -1548,7 +1548,7 @@ def admin_create_user(email: str, name: str, role: str) -> dict[str, Any]:
             'email': email,
             'name': name,
             'role': role,
-            'password': get_password_hash('Password@123'),
+            'password': get_password_hash('1234'),
             'createdAt': _now_iso(),
             'department': 'General'
         }

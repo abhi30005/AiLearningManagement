@@ -112,7 +112,7 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-secondary-900">
-             {defaultRole === 'teacher' ? 'Teacher Management' : defaultRole === 'student' ? 'Student Management' : 'User Management'}
+            {defaultRole === 'teacher' ? 'Teacher Management' : defaultRole === 'student' ? 'Student Management' : 'User Management'}
           </h1>
           <p className="text-secondary-600">Manage {defaultRole}s, roles, and permissions</p>
         </div>
@@ -124,18 +124,21 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
 
       {showAddForm && (
         <div className="card p-5 border-l-4 border-primary-500">
-           <h3 className="text-lg font-semibold mb-3">Add New {defaultRole === 'all' ? 'User' : defaultRole.charAt(0).toUpperCase() + defaultRole.slice(1)}</h3>
-           <div className="flex gap-4">
-              <input type="text" placeholder="Name" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="input flex-1" />
-              <input type="email" placeholder="Email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className="input flex-1" />
-              <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} className="input flex-1">
-                 <option value="student">Student</option>
-                 <option value="teacher">Teacher</option>
-                 <option value="admin">Admin</option>
-              </select>
-              <button onClick={handleAddUser} className="btn-primary">Save User</button>
-              <button onClick={() => setShowAddForm(false)} className="btn-secondary">Cancel</button>
-           </div>
+          <h3 className="text-lg font-semibold mb-3">Add New {defaultRole === 'all' ? 'User' : defaultRole.charAt(0).toUpperCase() + defaultRole.slice(1)}</h3>
+          <div className="flex gap-4">
+            <input type="text" placeholder="Name" value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} className="input flex-1" />
+            <input type="email" placeholder="Email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} className="input flex-1" />
+            <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })} className="input flex-1">
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button onClick={handleAddUser} className="btn-primary">Save User</button>
+            <button onClick={() => setShowAddForm(false)} className="btn-secondary">Cancel</button>
+          </div>
+          <p className="text-xs text-secondary-500 mt-3">
+            * New users will be created with the default password: <span className="font-mono bg-secondary-100 px-1 rounded">1234</span>
+          </p>
         </div>
       )}
 
@@ -170,82 +173,81 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
       {/* Users Table */}
       <div className="card overflow-visible pb-20">
         {loading ? (
-           <div className="p-8 text-center text-secondary-500">Loading users...</div>
+          <div className="p-8 text-center text-secondary-500">Loading users...</div>
         ) : (
-        <div className="overflow-visible">
-          <table className="w-full">
-            <thead className="bg-secondary-50">
-              <tr>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">User</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Role</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Status</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Joined</th>
-                <th className="py-3 px-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-secondary-200">
-              {filteredUsers.length === 0 ? (
+          <div className="overflow-visible">
+            <table className="w-full">
+              <thead className="bg-secondary-50">
                 <tr>
-                   <td colSpan={5} className="p-8 text-center text-secondary-500">No users found.</td>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">User</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Role</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Status</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Joined</th>
+                  <th className="py-3 px-4"></th>
                 </tr>
-              ) : filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-secondary-50 transition-colors">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center text-white font-medium">
+              </thead>
+              <tbody className="divide-y divide-secondary-200">
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-secondary-500">No users found.</td>
+                  </tr>
+                ) : filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-secondary-50 transition-colors">
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center text-white font-medium">
                           {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                      </div>
-                      <div>
-                        <p className="font-medium text-secondary-900">{user.name}</p>
-                        <p className="text-sm text-secondary-500">{user.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleChangeRole(user.id, e.target.value)}
-                      className={`input py-1 px-2 text-sm border font-medium max-w-[110px] ${
-                        user.role === 'admin' ? 'bg-error-50 text-error-700 border-error-200' :
-                        user.role === 'teacher' ? 'bg-primary-50 text-primary-700 border-primary-200' :
-                        'bg-accent-50 text-accent-700 border-accent-200'
-                      }`}
-                    >
-                      <option value="student">Student</option>
-                      <option value="teacher">Teacher</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </td>
-                  <td className="py-4 px-4 text-sm">
-                    <span className="flex items-center gap-1 text-accent-600"><UserCheck className="w-4 h-4" /> Active</span>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-secondary-500">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="relative">
-                      <button
-                        onClick={() => setSelectedUser(selectedUser === user.id ? null : user.id)}
-                        className="p-2 hover:bg-secondary-100 rounded-lg"
-                      >
-                        <MoreVertical className="w-4 h-4 text-secondary-400" />
-                      </button>
-
-                      {selectedUser === user.id && (
-                        <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-secondary-200 py-1 z-50">
-                          <button onClick={() => handleDeleteUser(user.id)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-error-600 hover:bg-error-50">
-                            <Trash2 className="w-4 h-4" />
-                            Delete User
-                          </button>
                         </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        <div>
+                          <p className="font-medium text-secondary-900">{user.name}</p>
+                          <p className="text-sm text-secondary-500">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleChangeRole(user.id, e.target.value)}
+                        className={`input py-1 px-2 text-sm border font-medium max-w-[110px] ${user.role === 'admin' ? 'bg-error-50 text-error-700 border-error-200' :
+                            user.role === 'teacher' ? 'bg-primary-50 text-primary-700 border-primary-200' :
+                              'bg-accent-50 text-accent-700 border-accent-200'
+                          }`}
+                      >
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td className="py-4 px-4 text-sm">
+                      <span className="flex items-center gap-1 text-accent-600"><UserCheck className="w-4 h-4" /> Active</span>
+                    </td>
+                    <td className="py-4 px-4 text-sm text-secondary-500">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="relative">
+                        <button
+                          onClick={() => setSelectedUser(selectedUser === user.id ? null : user.id)}
+                          className="p-2 hover:bg-secondary-100 rounded-lg"
+                        >
+                          <MoreVertical className="w-4 h-4 text-secondary-400" />
+                        </button>
+
+                        {selectedUser === user.id && (
+                          <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-secondary-200 py-1 z-50">
+                            <button onClick={() => handleDeleteUser(user.id)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-error-600 hover:bg-error-50">
+                              <Trash2 className="w-4 h-4" />
+                              Delete User
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

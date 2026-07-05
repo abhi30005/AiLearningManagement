@@ -23,8 +23,9 @@ import { useState } from 'react'
 const navItems = {
   admin: [
     { path: '/dashboard', icon: LayoutDashboard, label: 'dashboard' },
+    { path: '/admin/my-courses', icon: BookOpen, label: 'my courses' },
     { path: '/admin/users', icon: Users, label: 'users' },
-    { path: '/admin/courses', icon: BookOpen, label: 'courses' },
+    { path: '/admin/courses', icon: ClipboardList, label: 'all courses' },
     { path: '/admin/categories', icon: Settings, label: 'categories' },
     { path: '/admin/enrollments', icon: ClipboardList, label: 'enrollments' },
   ],
