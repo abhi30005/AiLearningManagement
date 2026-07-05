@@ -35,6 +35,8 @@ export default function AdminDashboard() {
   
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [dateFilter, setDateFilter] = useState('Last 30 days')
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -78,14 +80,20 @@ export default function AdminDashboard() {
     }))
   }, [data])
 
-  const enrollmentData = data?.enrollmentData || [
-    { month: 'Jan', students: Math.floor((data?.active_students || 900) * 0.4), courses: Math.floor((data?.active_courses || 48) * 0.5) },
-    { month: 'Feb', students: Math.floor((data?.active_students || 900) * 0.5), courses: Math.floor((data?.active_courses || 48) * 0.6) },
-    { month: 'Mar', students: Math.floor((data?.active_students || 900) * 0.6), courses: Math.floor((data?.active_courses || 48) * 0.7) },
-    { month: 'Apr', students: Math.floor((data?.active_students || 900) * 0.8), courses: Math.floor((data?.active_courses || 48) * 0.8) },
-    { month: 'May', students: Math.floor((data?.active_students || 900) * 0.9), courses: Math.floor((data?.active_courses || 48) * 0.9) },
-    { month: 'Jun', students: data?.active_students || 900, courses: data?.active_courses || 48 },
-  ]
+  const enrollmentData = useMemo(() => {
+    const baseData = data?.enrollmentData || [
+      { month: 'Jan', students: Math.floor((data?.active_students || 900) * 0.4), courses: Math.floor((data?.active_courses || 48) * 0.5) },
+      { month: 'Feb', students: Math.floor((data?.active_students || 900) * 0.5), courses: Math.floor((data?.active_courses || 48) * 0.6) },
+      { month: 'Mar', students: Math.floor((data?.active_students || 900) * 0.6), courses: Math.floor((data?.active_courses || 48) * 0.7) },
+      { month: 'Apr', students: Math.floor((data?.active_students || 900) * 0.8), courses: Math.floor((data?.active_courses || 48) * 0.8) },
+      { month: 'May', students: Math.floor((data?.active_students || 900) * 0.9), courses: Math.floor((data?.active_courses || 48) * 0.9) },
+      { month: 'Jun', students: data?.active_students || 900, courses: data?.active_courses || 48 },
+    ]
+    if (dateFilter === 'Today') return baseData.slice(-1).map((d: any) => ({...d, month: 'Today'}))
+    if (dateFilter === 'Last 7 days') return baseData.slice(-2)
+    if (dateFilter === 'Last 30 days') return baseData.slice(-4)
+    return baseData
+  }, [data, dateFilter])
 
   const recentActivity = data?.recent_activity || []
 
@@ -101,10 +109,25 @@ export default function AdminDashboard() {
           <p className="text-secondary-600">Welcome back, {user?.full_name || 'Admin'}</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="btn-secondary">
-            <Calendar className="w-4 h-4" />
-            Last 30 days
-          </button>
+          <div className="relative">
+            <button onClick={() => setCalendarOpen(!calendarOpen)} className="btn-secondary">
+              <Calendar className="w-4 h-4" />
+              {dateFilter}
+            </button>
+            {calendarOpen && (
+              <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-secondary-200 py-1 z-50">
+                {['Today', 'Last 7 days', 'Last 30 days', 'This Year'].map(option => (
+                  <button 
+                    key={option}
+                    onClick={() => { setDateFilter(option); setCalendarOpen(false); }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-secondary-50 ${dateFilter === option ? 'text-primary-600 bg-primary-50 font-medium' : 'text-secondary-700'}`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={() => navigate('/courses/new')} className="btn-primary">
             <BookOpen className="w-4 h-4" />
             {t('courses.createCourse')}
@@ -157,28 +180,16 @@ export default function AdminDashboard() {
         </div>
 
         <div className="card p-6">
-          <h3 className="text-lg font-semibold text-secondary-900 mb-4">Courses by Category</h3>
-          <div className="flex items-center">
-            <ResponsiveContainer width="50%" height={250}>
-              <PieChart>
-                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                {categoryData.map((entry: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex-1 space-y-2">
-              {categoryData.map((item: any, index: number) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-secondary-600">{item.name}</span>
-                  <span className="text-sm font-medium text-secondary-900 ml-auto">{item.value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <h3 className="text-lg font-semibold text-secondary-900 mb-4">Enrollments by Category</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={categoryData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" stroke="#64748b" />
+              <YAxis stroke="#64748b" />
+              <Tooltip />
+              <Bar dataKey="students" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Students Enrolled" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

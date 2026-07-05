@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from state_store import list_all_enrollments, delete_enrollment, list_enrollments, get_course, enroll_user_in_course
+from state_store import list_all_enrollments, delete_enrollment, list_enrollments, get_course, enroll_user_in_course, get_user_by_id
 
 router = APIRouter(prefix="/enrollments", tags=["Enrollments Management"])
 
@@ -18,7 +18,17 @@ async def create_enrollment(req: EnrollRequest):
 
 @router.get("/")
 async def get_enrollments():
-    return {"enrollments": list_all_enrollments()}
+    enrollments = list_all_enrollments()
+    result = []
+    for enr in enrollments:
+        user = get_user_by_id(enr['userId'])
+        course = get_course(enr['courseId'])
+        enr['userName'] = user['name'] if user else enr['userId']
+        enr['userEmail'] = user['email'] if user else 'N/A'
+        enr['courseTitle'] = course['title'] if course else enr['courseId']
+        enr['enrolledAt'] = enr.get('createdAt')
+        result.append(enr)
+    return {"enrollments": result}
 
 @router.get("/user/{user_id}")
 async def get_user_enrollments(user_id: str):

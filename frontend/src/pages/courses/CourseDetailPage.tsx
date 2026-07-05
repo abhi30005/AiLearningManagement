@@ -105,13 +105,13 @@ export default function CourseDetailPage() {
 
             <div className="flex items-center gap-4">
               <img
-                src={courseData.instructor.avatar}
-                alt={courseData.instructor.name}
+                src={courseData.instructor?.avatar || 'https://ui-avatars.com/api/?name=Instructor&background=random'}
+                alt={courseData.instructor?.name || 'Instructor'}
                 className="w-12 h-12 rounded-full object-cover"
               />
               <div>
-                <p className="font-medium text-white">{courseData.instructor.name}</p>
-                <p className="text-sm text-secondary-300">{courseData.instructor.bio}</p>
+                <p className="font-medium text-white">{courseData.instructor?.name || 'Instructor'}</p>
+                <p className="text-sm text-secondary-300">{courseData.instructor?.bio || ''}</p>
               </div>
             </div>
           </div>

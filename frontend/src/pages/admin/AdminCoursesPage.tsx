@@ -85,7 +85,6 @@ export default function AdminCoursesPage() {
             <thead>
               <tr className="bg-secondary-50 border-b border-secondary-200">
                 <th className="py-3 px-4 text-sm font-medium text-secondary-900">Course</th>
-                <th className="py-3 px-4 text-sm font-medium text-secondary-900">Category</th>
                 <th className="py-3 px-4 text-sm font-medium text-secondary-900">Students Enrolled</th>
                 <th className="py-3 px-4 text-sm font-medium text-secondary-900">Assigned Teacher</th>
                 <th className="py-3 px-4 text-sm font-medium text-secondary-900">Actions</th>
@@ -94,7 +93,7 @@ export default function AdminCoursesPage() {
             <tbody className="divide-y divide-secondary-200">
               {courses.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 px-6 text-center text-secondary-500">
+                  <td colSpan={4} className="py-8 px-6 text-center text-secondary-500">
                     No courses found.
                   </td>
                 </tr>
@@ -109,9 +108,6 @@ export default function AdminCoursesPage() {
                             <p className="text-xs text-secondary-500">{course.level || 'All Levels'}</p>
                           </div>
                        </div>
-                    </td>
-                    <td className="py-3 px-4 text-secondary-600 text-sm">
-                      {course.category}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1 text-sm text-secondary-600">

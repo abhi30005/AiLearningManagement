@@ -15,12 +15,14 @@ import {
   Plus,
   Image,
   X,
+  Globe,
+  ClipboardList
 } from 'lucide-react'
 
 interface Module {
   id: string
   title: string
-  lessons: { id: string; title: string; type: 'video' | 'pdf' | 'quiz'; url?: string }[]
+  lessons: { id: string; title: string; type: 'youtube' | 'website' | 'doc' | 'quiz'; url?: string }[]
 }
 
 export default function CreateCoursePage() {
@@ -51,7 +53,7 @@ export default function CreateCoursePage() {
     setExpandedModule(newModule.id)
   }
 
-  const addLesson = (moduleId: string, type: 'video' | 'pdf' | 'quiz') => {
+  const addLesson = (moduleId: string, type: 'youtube' | 'website' | 'doc' | 'quiz') => {
     setModules(modules.map((m) => {
       if (m.id === moduleId) {
         return {
@@ -60,7 +62,7 @@ export default function CreateCoursePage() {
             ...m.lessons,
             {
               id: Date.now().toString(),
-              title: type === 'video' ? 'New Video' : type === 'pdf' ? 'New PDF' : 'New Quiz',
+              title: type === 'youtube' ? 'New YouTube Video' : type === 'website' ? 'New Website Link' : type === 'doc' ? 'New Document' : 'New Quiz',
               type,
               url: '',
             },
@@ -149,7 +151,7 @@ export default function CreateCoursePage() {
               lessons: (ch.modules || []).map((l: any) => ({
                 id: l.id,
                 title: l.title,
-                type: l.hasPdf ? 'pdf' : (l.quiz ? 'quiz' : 'video'),
+                type: l.hasPdf ? 'doc' : (l.quiz ? 'quiz' : (l.url && l.url.includes('youtube') ? 'youtube' : 'website')),
                 url: l.url || ''
               }))
             })))
@@ -222,7 +224,8 @@ export default function CreateCoursePage() {
                 id: l.id,
                 title: l.title,
                 completed: false,
-                hasPdf: l.type === 'pdf' || l.type === 'quiz',
+                hasPdf: l.type === 'doc',
+                quiz: l.type === 'quiz',
                 url: l.url
               }))
             }))
@@ -251,7 +254,8 @@ export default function CreateCoursePage() {
                     body: JSON.stringify({
                       title: lesson.title,
                       completed: false,
-                      hasPdf: lesson.type === 'pdf' || lesson.type === 'quiz',
+                      hasPdf: lesson.type === 'doc',
+                      quiz: lesson.type === 'quiz',
                       url: lesson.url
                     }),
                   })
@@ -323,10 +327,11 @@ export default function CreateCoursePage() {
                 className="input"
               >
                 <option value="">Select category</option>
-                <option value="technology">Technology</option>
-                <option value="business">Business</option>
-                <option value="design">Design</option>
-                <option value="science">Science</option>
+                <option value="Technology">Technology</option>
+                <option value="Business">Business</option>
+                <option value="Design">Design</option>
+                <option value="Science">Science</option>
+                <option value="AI Fundamentals">AI Fundamentals</option>
               </select>
             </div>
             <div>
@@ -438,9 +443,10 @@ export default function CreateCoursePage() {
                     {module.lessons.map((lesson) => (
                       <div key={lesson.id} className="flex flex-col gap-2 p-3 bg-secondary-50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          {lesson.type === 'video' && <Video className="w-4 h-4 text-primary-500" />}
-                          {lesson.type === 'pdf' && <FileText className="w-4 h-4 text-accent-500" />}
-                          {lesson.type === 'quiz' && <FileText className="w-4 h-4 text-warning-500" />}
+                          {lesson.type === 'youtube' && <Video className="w-4 h-4 text-primary-500" />}
+                          {lesson.type === 'website' && <Globe className="w-4 h-4 text-blue-500" />}
+                          {lesson.type === 'doc' && <FileText className="w-4 h-4 text-accent-500" />}
+                          {lesson.type === 'quiz' && <ClipboardList className="w-4 h-4 text-warning-500" />}
                           <input
                             type="text"
                             value={lesson.title}
@@ -459,55 +465,100 @@ export default function CreateCoursePage() {
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-3 pl-7">
-                          <input
-                            type="text"
-                            value={lesson.url || ''}
-                            onChange={(e) => updateLessonUrl(module.id, lesson.id, e.target.value)}
-                            placeholder={lesson.type === 'video' ? "Paste YouTube URL" : "Paste Link or Upload File ->"}
-                            className="flex-1 input h-8 text-sm"
-                          />
-                          <label className={`btn-secondary btn-sm cursor-pointer whitespace-nowrap ${!id ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            Upload File
-                            <input
-                              type="file"
-                              className="hidden"
-                              disabled={!id}
-                              accept={lesson.type === 'video' ? "video/*" : ".pdf,.jpg,.png"}
-                              onChange={(e) => {
-                                if (!id) {
-                                  alert("Please save the course first before uploading files.")
-                                  return
-                                }
-                                handleLessonFileUpload(e, module.id, lesson.id)
-                              }}
-                            />
-                          </label>
+                        <div className="flex items-center gap-3 pl-7 mt-1">
+                          {lesson.url ? (
+                            <div className="flex-1 flex items-center justify-between bg-secondary-100 px-3 py-1.5 rounded border border-secondary-200">
+                              <span className="text-sm text-secondary-700 truncate mr-2" title={lesson.url}>
+                                {lesson.type === 'doc' ? 'Document Uploaded' : 'Link Added'}: {lesson.url}
+                              </span>
+                              <button onClick={() => updateLessonUrl(module.id, lesson.id, '')} className="text-error-500 hover:text-error-700 text-xs font-medium bg-error-50 hover:bg-error-100 px-2 py-1 rounded transition-colors border border-error-200">
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex-1 flex items-center gap-2">
+                              {lesson.type !== 'doc' && (
+                                <>
+                                  <input
+                                    id={`url-input-${lesson.id}`}
+                                    type="text"
+                                    placeholder={lesson.type === 'youtube' ? "Paste YouTube URL" : lesson.type === 'website' ? "Paste Website URL" : "Paste Quiz Link"}
+                                    className="flex-1 input h-8 text-sm"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        updateLessonUrl(module.id, lesson.id, e.currentTarget.value);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const input = document.getElementById(`url-input-${lesson.id}`) as HTMLInputElement;
+                                      if (input && input.value) {
+                                        updateLessonUrl(module.id, lesson.id, input.value);
+                                      }
+                                    }}
+                                    className="btn-primary btn-sm py-1 whitespace-nowrap"
+                                  >
+                                    Add
+                                  </button>
+                                </>
+                              )}
+                              {lesson.type === 'doc' && (
+                                <>
+                                  <span className="flex-1 text-sm text-secondary-400 italic">No document uploaded yet...</span>
+                                  <label className={`btn-secondary btn-sm cursor-pointer whitespace-nowrap ${!id ? 'opacity-50' : ''}`}>
+                                    {!id ? 'Save Course to Upload' : 'Upload Doc'}
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      accept=".pdf,.doc,.docx,.jpg,.png"
+                                      onChange={(e) => {
+                                        if (!id) {
+                                          alert("You must click 'Save' at the top of the page to create the course before you can upload documents!")
+                                          e.target.value = ''
+                                          return
+                                        }
+                                        handleLessonFileUpload(e, module.id, lesson.id)
+                                      }}
+                                    />
+                                  </label>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => addLesson(module.id, 'video')}
+                      onClick={() => addLesson(module.id, 'youtube')}
                       className="btn-sm btn-secondary"
                     >
                       <Video className="w-3 h-3" />
-                      Video
+                      YouTube Link
                     </button>
                     <button
-                      onClick={() => addLesson(module.id, 'pdf')}
+                      onClick={() => addLesson(module.id, 'website')}
+                      className="btn-sm btn-secondary"
+                    >
+                      <Globe className="w-3 h-3" />
+                      Website Link
+                    </button>
+                    <button
+                      onClick={() => addLesson(module.id, 'doc')}
                       className="btn-sm btn-secondary"
                     >
                       <FileText className="w-3 h-3" />
-                      PDF
+                      Doc Upload
                     </button>
                     <button
                       onClick={() => addLesson(module.id, 'quiz')}
                       className="btn-sm btn-secondary"
                     >
-                      <FileText className="w-3 h-3" />
-                      Quiz
+                      <ClipboardList className="w-3 h-3" />
+                      Quiz Link
                     </button>
                   </div>
                 </div>
