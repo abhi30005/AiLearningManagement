@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../lib/api'
+import { useNavigate } from 'react-router-dom'
 import { PageLoader } from '../../components/ui/PageLoader'
 import {
   BookOpen,
   Edit2,
   Trash2,
-  Users
+  Users,
+  Plus
 } from 'lucide-react'
 
 export default function AdminCoursesPage() {
+  const navigate = useNavigate()
   const [courses, setCourses] = useState<any[]>([])
   const [teachers, setTeachers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,6 +72,10 @@ export default function AdminCoursesPage() {
           <h1 className="text-2xl font-bold text-secondary-900">Course Management</h1>
           <p className="text-secondary-600">Manage courses and assign teachers globally.</p>
         </div>
+        <button onClick={() => navigate('/courses/new')} className="btn-primary">
+          <Plus className="w-4 h-4" />
+          Create Course
+        </button>
       </div>
 
       <div className="card overflow-hidden">

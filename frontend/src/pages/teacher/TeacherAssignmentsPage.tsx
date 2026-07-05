@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
-import { ClipboardList, CheckCircle } from 'lucide-react'
+import { ClipboardList, CheckCircle, Plus, X } from 'lucide-react'
 import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function TeacherAssignmentsPage() {
@@ -12,20 +12,34 @@ export default function TeacherAssignmentsPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null)
   const [gradeInput, setGradeInput] = useState({ score: 0, feedback: '' })
 
+  const [courses, setCourses] = useState<any[]>([])
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newAssignment, setNewAssignment] = useState({
+    title: '',
+    courseId: '',
+    instructions: '',
+    dueDate: ''
+  })
+
   useEffect(() => {
-    const fetchSubmissions = async () => {
+    const fetchData = async () => {
       try {
-        const data = await apiFetch<any>('/assessments/submissions')
-        // In a real app we would filter by teacher's courses, but let's assume this returns all for now
-        // since the backend state_store has a simple flat list for demo purposes.
-        setSubmissions(data.submissions || [])
+        const [subData, courseData] = await Promise.all([
+          apiFetch<any>('/assessments/submissions'),
+          apiFetch<any[]>(`/courses/teacher/${user?.id || 'current'}`)
+        ])
+        setSubmissions(subData.submissions || [])
+        setCourses(courseData || [])
+        if (courseData && courseData.length > 0) {
+          setNewAssignment(prev => ({ ...prev, courseId: courseData[0].id }))
+        }
       } catch (err) {
         console.error(err)
       } finally {
         setLoading(false)
       }
     }
-    fetchSubmissions()
+    if (user) fetchData()
   }, [])
 
   const handleGrade = async () => {
@@ -48,6 +62,31 @@ export default function TeacherAssignmentsPage() {
     }
   }
 
+  const handleCreateAssignment = async () => {
+    if (!newAssignment.title || !newAssignment.courseId) {
+      alert("Title and Course are required.")
+      return
+    }
+    try {
+      await apiFetch('/assessments/assignments', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newAssignment.title,
+          courseId: newAssignment.courseId,
+          instructions: newAssignment.instructions,
+          dueDate: newAssignment.dueDate,
+          teacherId: user?.id
+        })
+      })
+      alert("Assignment created successfully!")
+      setShowCreateModal(false)
+      setNewAssignment({ title: '', courseId: courses[0]?.id || '', instructions: '', dueDate: '' })
+    } catch (err) {
+      console.error(err)
+      alert("Failed to create assignment")
+    }
+  }
+
   if (loading) {
     return <PageLoader type="list" />
   }
@@ -57,8 +96,12 @@ export default function TeacherAssignmentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-secondary-900">Assignments & Grading</h1>
-          <p className="text-secondary-600">Review student submissions and provide feedback.</p>
+          <p className="text-secondary-600">Create assignments and review student submissions.</p>
         </div>
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+          <Plus className="w-4 h-4" />
+          Create Assignment
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -175,6 +218,83 @@ export default function TeacherAssignmentsPage() {
           )}
         </div>
       </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-secondary-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-secondary-100">
+              <h2 className="text-xl font-bold text-secondary-900">Create New Assignment</h2>
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                className="text-secondary-400 hover:text-secondary-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">Title</label>
+                <input 
+                  type="text" 
+                  value={newAssignment.title}
+                  onChange={(e) => setNewAssignment({...newAssignment, title: e.target.value})}
+                  className="input w-full"
+                  placeholder="e.g. Week 1 Essay"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">Course</label>
+                <select 
+                  value={newAssignment.courseId}
+                  onChange={(e) => setNewAssignment({...newAssignment, courseId: e.target.value})}
+                  className="input w-full"
+                >
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">Due Date</label>
+                <input 
+                  type="date" 
+                  value={newAssignment.dueDate}
+                  onChange={(e) => setNewAssignment({...newAssignment, dueDate: e.target.value})}
+                  className="input w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">Instructions</label>
+                <textarea 
+                  value={newAssignment.instructions}
+                  onChange={(e) => setNewAssignment({...newAssignment, instructions: e.target.value})}
+                  className="input w-full min-h-[100px]"
+                  placeholder="Write instructions for the students..."
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-secondary-100 bg-secondary-50 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleCreateAssignment}
+                className="btn-primary"
+              >
+                Create Assignment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

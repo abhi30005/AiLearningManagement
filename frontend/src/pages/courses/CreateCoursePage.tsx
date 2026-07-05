@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
 import { useLanguage } from '../../lib/language-context'
@@ -20,13 +20,15 @@ import {
 interface Module {
   id: string
   title: string
-  lessons: { id: string; title: string; type: 'video' | 'pdf' | 'quiz' }[]
+  lessons: { id: string; title: string; type: 'video' | 'pdf' | 'quiz'; url?: string }[]
 }
 
 export default function CreateCoursePage() {
   const { t } = useLanguage()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { id } = useParams()
+  const isEditing = !!id
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
@@ -60,12 +62,53 @@ export default function CreateCoursePage() {
               id: Date.now().toString(),
               title: type === 'video' ? 'New Video' : type === 'pdf' ? 'New PDF' : 'New Quiz',
               type,
+              url: '',
             },
           ],
         }
       }
       return m
     }))
+  }
+
+  const updateLessonUrl = (moduleId: string, lessonId: string, url: string) => {
+    setModules(modules.map((m) => {
+      if (m.id === moduleId) {
+        return {
+          ...m,
+          lessons: m.lessons.map(l => l.id === lessonId ? { ...l, url } : l)
+        }
+      }
+      return m
+    }))
+  }
+
+  const handleLessonFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, moduleId: string, lessonId: string) => {
+    if (!id) {
+      alert("Please save the course first before uploading materials.")
+      return
+    }
+    
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      // Use existing material upload endpoints
+      const endpoint = file.type.includes('pdf') ? 'upload-pdf' : 'upload-image'
+      const res = await apiFetch<any>(`/materials/${endpoint}?course_id=${id}&chapter_id=${moduleId}`, {
+        method: 'POST',
+        body: formData,
+      })
+      if (res.success && res.material) {
+        updateLessonUrl(moduleId, lessonId, res.material.url)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to upload file")
+    }
   }
 
   const removeLesson = (moduleId: string, lessonId: string) => {
@@ -85,6 +128,48 @@ export default function CreateCoursePage() {
   }
 
   const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(isEditing)
+
+  useEffect(() => {
+    if (isEditing) {
+      const fetchCourse = async () => {
+        try {
+          const data = await apiFetch<any>(`/courses/${id}`)
+          setTitle(data.title || '')
+          setDescription(data.description || '')
+          setCategory(data.category || '')
+          setLevel(data.level || 'beginner')
+          setLanguage(data.language || 'en')
+          setThumbnail(data.image || data.thumbnail || '')
+          
+          if (data.chapters && data.chapters.length > 0) {
+            setModules(data.chapters.map((ch: any) => ({
+              id: ch.id,
+              title: ch.title,
+              lessons: (ch.modules || []).map((l: any) => ({
+                id: l.id,
+                title: l.title,
+                type: l.hasPdf ? 'pdf' : (l.quiz ? 'quiz' : 'video'),
+                url: l.url || ''
+              }))
+            })))
+          } else {
+             setModules([])
+          }
+        } catch (err) {
+          console.error(err)
+          alert("Failed to load course details")
+        } finally {
+          setInitialLoading(false)
+        }
+      }
+      fetchCourse()
+    }
+  }, [id, isEditing])
+
+  if (initialLoading) {
+    return <div className="p-8 text-center">Loading course data...</div>
+  }
 
   const handleThumbnailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -118,8 +203,8 @@ export default function CreateCoursePage() {
   const handleSave = async () => {
     setLoading(true)
     try {
-      await apiFetch('/courses/', {
-        method: 'POST',
+      const courseRes = await apiFetch<any>(isEditing ? `/courses/${id}` : '/courses/', {
+        method: isEditing ? 'PUT' : 'POST',
         body: JSON.stringify({
           title,
           description,
@@ -129,12 +214,60 @@ export default function CreateCoursePage() {
           level,
           language,
           thumbnail: thumbnail || undefined,
+          ...(isEditing && {
+            chapters: modules.map(m => ({
+              id: m.id,
+              title: m.title,
+              modules: m.lessons.map(l => ({
+                id: l.id,
+                title: l.title,
+                completed: false,
+                hasPdf: l.type === 'pdf' || l.type === 'quiz',
+                url: l.url
+              }))
+            }))
+          })
         }),
       })
-      navigate('/courses')
+      
+      const courseId = isEditing ? id : courseRes.course?.id
+      if (courseId) {
+        // If editing, ideally we should update chapters/modules instead of blindly adding them.
+        // For simplicity in this demo backend, we'll assume editing course metadata is primary.
+        // But let's try to add chapters if it's a new course, or we can just send the chapters.
+        // If it's a new course, we create chapters.
+        if (!isEditing) {
+          for (const mod of modules) {
+            try {
+              const chapRes = await apiFetch<any>(`/courses/${courseId}/chapters`, {
+                method: 'POST',
+                body: JSON.stringify({ title: mod.title }),
+              })
+              const chapterId = chapRes.chapter?.id
+              if (chapterId && mod.lessons.length > 0) {
+                for (const lesson of mod.lessons) {
+                  await apiFetch(`/courses/${courseId}/chapters/${chapterId}/modules`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      title: lesson.title,
+                      completed: false,
+                      hasPdf: lesson.type === 'pdf' || lesson.type === 'quiz',
+                      url: lesson.url
+                    }),
+                  })
+                }
+              }
+            } catch (modErr) {
+              console.error('Failed to save module:', modErr)
+            }
+          }
+        }
+      }
+      
+      navigate('/teacher/courses')
     } catch (error) {
-      console.error('Error creating course:', error)
-      alert('Failed to create course')
+      console.error('Error saving course:', error)
+      alert('Failed to save course')
     } finally {
       setLoading(false)
     }
@@ -143,12 +276,14 @@ export default function CreateCoursePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-secondary-900">{t('courses.createCourse')}</h1>
+        <h1 className="text-2xl font-bold text-secondary-900">{isEditing ? 'Edit Course' : t('courses.createCourse')}</h1>
         <div className="flex items-center gap-3">
-          <button className="btn-secondary">
-            <Eye className="w-4 h-4" />
-            Preview
-          </button>
+          {isEditing && (
+            <button onClick={() => navigate(`/courses/${id}`)} className="btn-secondary">
+              <Eye className="w-4 h-4" />
+              Preview
+            </button>
+          )}
           <button onClick={handleSave} className="btn-primary">
             <Save className="w-4 h-4" />
             {t('common.save')}
@@ -301,21 +436,54 @@ export default function CreateCoursePage() {
                 <div className="p-4 border-t border-secondary-200 bg-white">
                   <div className="space-y-2 mb-4">
                     {module.lessons.map((lesson) => (
-                      <div key={lesson.id} className="flex items-center gap-3 p-3 bg-secondary-50 rounded-lg">
-                        {lesson.type === 'video' && <Video className="w-4 h-4 text-primary-500" />}
-                        {lesson.type === 'pdf' && <FileText className="w-4 h-4 text-accent-500" />}
-                        {lesson.type === 'quiz' && <FileText className="w-4 h-4 text-warning-500" />}
-                        <input
-                          type="text"
-                          value={lesson.title}
-                          className="flex-1 bg-transparent border-none outline-none text-secondary-700"
-                        />
-                        <button
-                          onClick={() => removeLesson(module.id, lesson.id)}
-                          className="p-1 hover:bg-secondary-200 rounded text-secondary-400 hover:text-secondary-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div key={lesson.id} className="flex flex-col gap-2 p-3 bg-secondary-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {lesson.type === 'video' && <Video className="w-4 h-4 text-primary-500" />}
+                          {lesson.type === 'pdf' && <FileText className="w-4 h-4 text-accent-500" />}
+                          {lesson.type === 'quiz' && <FileText className="w-4 h-4 text-warning-500" />}
+                          <input
+                            type="text"
+                            value={lesson.title}
+                            onChange={(e) => {
+                              setModules(modules.map(m => m.id === module.id ? {
+                                ...m, lessons: m.lessons.map(l => l.id === lesson.id ? { ...l, title: e.target.value } : l)
+                              } : m))
+                            }}
+                            className="flex-1 bg-transparent border-none outline-none text-secondary-700"
+                            placeholder="Lesson Title"
+                          />
+                          <button
+                            onClick={() => removeLesson(module.id, lesson.id)}
+                            className="p-1 hover:bg-secondary-200 rounded text-secondary-400 hover:text-secondary-600"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3 pl-7">
+                          <input
+                            type="text"
+                            value={lesson.url || ''}
+                            onChange={(e) => updateLessonUrl(module.id, lesson.id, e.target.value)}
+                            placeholder={lesson.type === 'video' ? "Paste YouTube URL" : "Paste Link or Upload File ->"}
+                            className="flex-1 input h-8 text-sm"
+                          />
+                          <label className={`btn-secondary btn-sm cursor-pointer whitespace-nowrap ${!id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            Upload File
+                            <input
+                              type="file"
+                              className="hidden"
+                              disabled={!id}
+                              accept={lesson.type === 'video' ? "video/*" : ".pdf,.jpg,.png"}
+                              onChange={(e) => {
+                                if (!id) {
+                                  alert("Please save the course first before uploading files.")
+                                  return
+                                }
+                                handleLessonFileUpload(e, module.id, lesson.id)
+                              }}
+                            />
+                          </label>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -350,7 +518,7 @@ export default function CreateCoursePage() {
       </div>
 
       {/* AI Course Builder */}
-      <div className="card p-6 border-primary-200 bg-gradient-to-r from-primary-50 to-accent-50">
+      {/* <div className="card p-6 border-primary-200 bg-gradient-to-r from-primary-50 to-accent-50">
         <h2 className="text-lg font-semibold text-secondary-900 mb-2">AI Course Builder</h2>
         <p className="text-secondary-600 mb-4">
           Let AI help you generate course content, summaries, and quizzes automatically.
@@ -362,7 +530,7 @@ export default function CreateCoursePage() {
             </button>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }

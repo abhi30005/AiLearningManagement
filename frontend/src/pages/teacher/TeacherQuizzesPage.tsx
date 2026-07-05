@@ -1,13 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
 import { Brain, FileText, CheckCircle, HelpCircle } from 'lucide-react'
 
 export default function TeacherQuizzesPage() {
+  const { user } = useAuth()
   const [topic, setTopic] = useState('')
   const [difficulty, setDifficulty] = useState('standard')
   const [numQuestions, setNumQuestions] = useState(5)
   const [questions, setQuestions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [courses, setCourses] = useState<any[]>([])
+  const [selectedCourse, setSelectedCourse] = useState('')
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const data = await apiFetch<any[]>(`/courses/teacher/${user?.id || 'current'}`)
+        setCourses(data || [])
+        if (data && data.length > 0) {
+          setSelectedCourse(data[0].id)
+        }
+      } catch (err) {
+        console.error('Failed to fetch courses', err)
+      }
+    }
+    if (user) fetchCourses()
+  }, [user])
 
   const handleGenerate = async () => {
     if (!topic) return
@@ -28,6 +47,25 @@ export default function TeacherQuizzesPage() {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    if (!selectedCourse || questions.length === 0) return
+    try {
+      await apiFetch('/assessments/assignments', {
+        method: 'POST',
+        body: JSON.stringify({
+          courseId: selectedCourse,
+          title: `Quiz: ${topic}`,
+          instructions: JSON.stringify(questions, null, 2),
+          teacherId: user?.id
+        })
+      })
+      alert("Quiz saved and published as an assignment!")
+    } catch (err) {
+      console.error(err)
+      alert("Failed to save quiz.")
     }
   }
 
@@ -98,7 +136,18 @@ export default function TeacherQuizzesPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-secondary-900">Generated Preview</h3>
-                <button className="btn-accent">Save & Publish Quiz</button>
+                <div className="flex gap-2">
+                  <select 
+                    value={selectedCourse}
+                    onChange={(e) => setSelectedCourse(e.target.value)}
+                    className="input py-1 px-3 h-auto"
+                  >
+                    {courses.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                  <button onClick={handlePublish} className="btn-accent">Save & Publish Quiz</button>
+                </div>
               </div>
 
               {questions.map((q, i) => (

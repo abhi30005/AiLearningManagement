@@ -60,7 +60,7 @@ export default function TeacherDashboard() {
           <h1 className="text-2xl font-bold text-secondary-900">{t('common.welcome')}, {user?.full_name?.split(' ')[0] || 'Teacher'}</h1>
           <p className="text-secondary-600">Here's what's happening with your courses</p>
         </div>
-        <button onClick={() => navigate('/courses/create')} className="btn-primary">
+        <button onClick={() => navigate('/courses/new')} className="btn-primary">
           <Plus className="w-4 h-4" />
           {t('courses.createCourse')}
         </button>
@@ -141,7 +141,7 @@ export default function TeacherDashboard() {
           ))}
 
           {/* Add Course Card */}
-          <div onClick={() => navigate('/courses/create')} className="card border-dashed border-2 flex items-center justify-center min-h-[280px] hover:border-primary-400 hover:bg-primary-50/50 transition-colors cursor-pointer">
+          <div onClick={() => navigate('/courses/new')} className="card border-dashed border-2 flex items-center justify-center min-h-[280px] hover:border-primary-400 hover:bg-primary-50/50 transition-colors cursor-pointer">
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center mx-auto">
                 <Plus className="w-6 h-6 text-secondary-600" />

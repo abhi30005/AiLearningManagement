@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 def _default_user_id(email: str, role: str) -> str:
     local = (email or role).split("@")[0].lower()

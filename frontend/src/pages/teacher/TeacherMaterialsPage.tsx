@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '../../lib/api'
 import { FileText, Video, Upload, Link as LinkIcon, Trash2, FolderPlus } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
+import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function TeacherMaterialsPage() {
   const { user } = useAuth()
@@ -89,6 +90,10 @@ export default function TeacherMaterialsPage() {
   const courseObj = courses.find(c => c.id === selectedCourse)
   const chapters = courseObj?.chapters || []
 
+  if (loading) {
+    return <PageLoader type="list" />
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -160,9 +165,7 @@ export default function TeacherMaterialsPage() {
               <h3 className="font-semibold text-secondary-900">Uploaded Materials</h3>
             </div>
             
-            {loading ? (
-              <div className="p-8 text-center text-secondary-500">Loading materials...</div>
-            ) : materials.length === 0 ? (
+            {materials.length === 0 ? (
               <div className="p-12 text-center">
                  <FileText className="w-12 h-12 text-secondary-300 mx-auto mb-4" />
                  <p className="text-secondary-600">No materials uploaded yet.</p>

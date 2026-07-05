@@ -14,7 +14,7 @@ def run():
             page.goto("http://localhost:5173/login")
             page.wait_for_selector("input[type='email']")
             page.fill("input[type='email']", "admin@eduai.edu")
-            page.fill("input[type='password']", "password123")
+            page.fill("input[type='password']", "admin123")
             page.click("button[type='submit']")
             
             f.write("Waiting for dashboard...\n")

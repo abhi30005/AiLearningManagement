@@ -24,8 +24,8 @@ export default function CourseDetailPage() {
   const { t } = useLanguage()
   const { user } = useAuth()
   const [expandedModule, setExpandedModule] = useState<number | null>(1)
-  const [isEnrolled, setIsEnrolled] = useState(false)
   const [courseData, setCourseData] = useState<any>(null)
+  const [courseMaterials, setCourseMaterials] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,12 +33,9 @@ export default function CourseDetailPage() {
       try {
         const data = await apiFetch<any>(`/courses/${id}`)
         setCourseData(data)
-        
-        if (user) {
-          const enrRes = await apiFetch<any>(`/enrollments/user/${user.id}`)
-          if (enrRes.enrollments?.some((e: any) => e.courseId === id)) {
-            setIsEnrolled(true)
-          }
+        const materialsData = await apiFetch<any>(`/materials?course_id=${id}`)
+        if (materialsData && materialsData.materials) {
+          setCourseMaterials(materialsData.materials)
         }
       } catch (error) {
         console.error('Error fetching course details:', error)
@@ -48,19 +45,6 @@ export default function CourseDetailPage() {
     }
     fetchCourse()
   }, [id, user])
-
-  const handleEnroll = async () => {
-    if (!user) return
-    try {
-      await apiFetch('/enrollments/', {
-        method: 'POST',
-        body: JSON.stringify({ userId: user.id, courseId: id })
-      })
-      setIsEnrolled(true)
-    } catch (error) {
-      console.error('Enrollment failed', error)
-    }
-  }
 
   if (loading) {
     return <PageLoader type="detail" />
@@ -162,7 +146,7 @@ export default function CourseDetailPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-secondary-900">Course Curriculum</h2>
               <span className="text-sm text-secondary-600">
-                {courseData.modules?.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0) || 0} lessons
+                {courseData.modules?.reduce((acc: number, m: any) => acc + (m.modules?.length || 0), 0) || 0} lessons
               </span>
             </div>
 
@@ -182,7 +166,7 @@ export default function CourseDetailPage() {
                       <span className="font-medium text-secondary-900">{module.title}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm text-secondary-600">
-                      <span>{module.lessons?.length || 0} lessons</span>
+                      <span>{module.modules?.length || 0} lessons</span>
                       {module.quiz && (
                         <span className="px-2 py-0.5 bg-secondary-200 rounded text-xs">
                           {module.quiz.questions} questions
@@ -193,19 +177,15 @@ export default function CourseDetailPage() {
 
                   {expandedModule === module.id && (
                     <div className="border-t border-secondary-200">
-                      {module.lessons?.map((lesson: any) => (
+                      {module.modules?.map((lesson: any) => (
                         <Link
                           key={lesson.id}
-                          to={isEnrolled ? `/learn/${id}/lesson/${lesson.id}` : '#'}
-                          className={`flex items-center justify-between p-3 hover:bg-secondary-50 transition-colors ${
-                            !isEnrolled ? 'opacity-60' : ''
-                          }`}
+                          to={`/learn/${id}/lesson/${lesson.id}`}
+                          className={`flex items-center justify-between p-3 hover:bg-secondary-50 transition-colors`}
                         >
                           <div className="flex items-center gap-3">
                             {lesson.completed ? (
                               <CheckCircle className="w-5 h-5 text-accent-500" />
-                            ) : !isEnrolled ? (
-                              <Lock className="w-5 h-5 text-secondary-400" />
                             ) : lesson.type === 'video' ? (
                               <Video className="w-5 h-5 text-primary-500" />
                             ) : (
@@ -220,10 +200,8 @@ export default function CourseDetailPage() {
                       ))}
                       {module.quiz && (
                         <Link
-                          to={isEnrolled ? `/learn/${id}/quiz/${module.quiz.id}` : '#'}
-                          className={`flex items-center gap-3 p-3 border-t border-secondary-200 hover:bg-secondary-50 bg-primary-50 ${
-                            !isEnrolled ? 'opacity-60' : ''
-                          }`}
+                          to={`/learn/${id}/quiz/${module.quiz.id}`}
+                          className={`flex items-center gap-3 p-3 border-t border-secondary-200 hover:bg-secondary-50 bg-primary-50`}
                         >
                           <FileText className="w-5 h-5 text-primary-600" />
                           <span className="font-medium text-primary-700">{module.quiz.title}</span>
@@ -238,7 +216,6 @@ export default function CourseDetailPage() {
               ))}
             </div>
             
-            {isEnrolled && (
               <div className="mt-8 p-6 bg-accent-50 border border-accent-200 rounded-xl flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-accent-800 flex items-center gap-2">
@@ -253,7 +230,6 @@ export default function CourseDetailPage() {
                   Take Final Quiz
                 </Link>
               </div>
-            )}
           </div>
         </div>
 
@@ -265,19 +241,13 @@ export default function CourseDetailPage() {
               <span className="text-3xl font-bold text-accent-600">Free</span>
             </div>
 
-            {isEnrolled ? (
               <Link
-                to={`/learn/${id}/lesson/1`}
+                to={`/learn/${id}/lesson/${courseData.modules?.[0]?.modules?.[0]?.id || '1'}`}
                 className="btn-primary w-full mb-4"
               >
                 <PlayCircle className="w-5 h-5" />
                 {t('courses.continueLearning')}
               </Link>
-            ) : (
-              <button onClick={handleEnroll} className="btn-accent w-full mb-4">
-                {t('courses.enroll')}
-              </button>
-            )}
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-3 text-secondary-600">
@@ -300,15 +270,17 @@ export default function CourseDetailPage() {
 
             <hr className="my-4 border-secondary-200" />
 
-            {courseData.resources && courseData.resources.length > 0 && (
+            {courseMaterials.length > 0 && (
               <div>
                 <h4 className="font-medium text-secondary-900 mb-2">Resources</h4>
                 <ul className="space-y-2">
-                  {courseData.resources.map((resource: any, i: number) => (
+                  {courseMaterials.map((resource: any, i: number) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-secondary-600">
                       <File className="w-4 h-4" />
-                      <span>{resource.name}</span>
-                      <span className="text-secondary-400 ml-auto">{resource.size}</span>
+                      <a href={resource.url} target="_blank" rel="noreferrer" className="hover:text-primary-600 hover:underline truncate" title={resource.title}>
+                        {resource.title}
+                      </a>
+                      <span className="text-secondary-400 ml-auto uppercase text-xs">{resource.type || resource.material_type}</span>
                     </li>
                   ))}
                 </ul>

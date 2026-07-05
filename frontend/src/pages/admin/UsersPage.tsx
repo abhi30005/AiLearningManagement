@@ -20,7 +20,7 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
 
   // New user form state
   const [showAddForm, setShowAddForm] = useState(false)
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: defaultRole })
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: defaultRole === 'all' ? 'student' : defaultRole })
 
   useEffect(() => {
     fetchUsers()
@@ -51,11 +51,39 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
       if (res.success) {
         setUsers([...users, res.user])
         setShowAddForm(false)
-        setNewUser({ name: '', email: '', role: defaultRole })
+        setNewUser({ name: '', email: '', role: defaultRole === 'all' ? 'student' : defaultRole })
       }
     } catch (err) {
       console.error(err)
       alert("Failed to add user")
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return
+    try {
+      await apiFetch(`/users/${userId}`, { method: 'DELETE' })
+      setUsers(users.filter(u => u.id !== userId))
+      setSelectedUser(null)
+    } catch (err) {
+      console.error(err)
+      alert("Failed to delete user")
+    }
+  }
+
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    try {
+      const res = await apiFetch<any>(`/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: newRole })
+      })
+      if (res.success) {
+        setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
+        setSelectedUser(null)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to update role")
     }
   }
 
@@ -90,13 +118,13 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
         </div>
         <button onClick={() => setShowAddForm(true)} className="btn-primary">
           <Plus className="w-4 h-4" />
-          Add {defaultRole.charAt(0).toUpperCase() + defaultRole.slice(1)}
+          Add {defaultRole === 'all' ? 'User' : defaultRole.charAt(0).toUpperCase() + defaultRole.slice(1)}
         </button>
       </div>
 
       {showAddForm && (
         <div className="card p-5 border-l-4 border-primary-500">
-           <h3 className="text-lg font-semibold mb-3">Add New {defaultRole}</h3>
+           <h3 className="text-lg font-semibold mb-3">Add New {defaultRole === 'all' ? 'User' : defaultRole.charAt(0).toUpperCase() + defaultRole.slice(1)}</h3>
            <div className="flex gap-4">
               <input type="text" placeholder="Name" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="input flex-1" />
               <input type="email" placeholder="Email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className="input flex-1" />
@@ -140,11 +168,11 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
       </div>
 
       {/* Users Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-visible pb-20">
         {loading ? (
            <div className="p-8 text-center text-secondary-500">Loading users...</div>
         ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-visible">
           <table className="w-full">
             <thead className="bg-secondary-50">
               <tr>
@@ -173,7 +201,21 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
                       </div>
                     </div>
                   </td>
-                  <td className="py-4 px-4">{getRoleBadge(user.role)}</td>
+                  <td className="py-4 px-4">
+                    <select
+                      value={user.role}
+                      onChange={(e) => handleChangeRole(user.id, e.target.value)}
+                      className={`input py-1 px-2 text-sm border font-medium max-w-[110px] ${
+                        user.role === 'admin' ? 'bg-error-50 text-error-700 border-error-200' :
+                        user.role === 'teacher' ? 'bg-primary-50 text-primary-700 border-primary-200' :
+                        'bg-accent-50 text-accent-700 border-accent-200'
+                      }`}
+                    >
+                      <option value="student">Student</option>
+                      <option value="teacher">Teacher</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
                   <td className="py-4 px-4 text-sm">
                     <span className="flex items-center gap-1 text-accent-600"><UserCheck className="w-4 h-4" /> Active</span>
                   </td>
@@ -190,18 +232,10 @@ export default function UsersPage({ defaultRole = 'student' }: { defaultRole?: s
                       </button>
 
                       {selectedUser === user.id && (
-                        <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-secondary-200 py-1 z-10">
-                          <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                            <Edit className="w-4 h-4" />
-                            Edit
-                          </button>
-                          <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                            <Mail className="w-4 h-4" />
-                            Email
-                          </button>
-                          <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50">
-                            <Shield className="w-4 h-4" />
-                            Change Role
+                        <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-secondary-200 py-1 z-50">
+                          <button onClick={() => handleDeleteUser(user.id)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-error-600 hover:bg-error-50">
+                            <Trash2 className="w-4 h-4" />
+                            Delete User
                           </button>
                         </div>
                       )}

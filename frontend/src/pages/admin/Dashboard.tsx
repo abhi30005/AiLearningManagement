@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLanguage } from '../../lib/language-context'
 import { useAuth } from '../../lib/auth-context'
+import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import {
   Users,
@@ -30,6 +31,7 @@ import {
 export default function AdminDashboard() {
   const { t } = useLanguage()
   const { user } = useAuth()
+  const navigate = useNavigate()
   
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -103,7 +105,7 @@ export default function AdminDashboard() {
             <Calendar className="w-4 h-4" />
             Last 30 days
           </button>
-          <button className="btn-primary">
+          <button onClick={() => navigate('/courses/new')} className="btn-primary">
             <BookOpen className="w-4 h-4" />
             {t('courses.createCourse')}
           </button>

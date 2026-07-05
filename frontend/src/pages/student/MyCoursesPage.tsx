@@ -18,16 +18,26 @@ export default function MyCoursesPage() {
         return;
       }
       try {
-        const res = await apiFetch<{enrollments: any[]}>(`/enrollments/user/${user.id}`);
-        const formattedCourses = res.enrollments.map(enr => ({
-          id: enr.course.id,
-          title: enr.course.title,
-          progress: enr.progress || 0,
-          image: enr.course.image,
-          nextLesson: '',
-          lastAccessed: '',
-          completed: enr.progress === 100
-        }));
+        const [enrollRes, coursesRes] = await Promise.all([
+           apiFetch<{enrollments: any[]}>(`/enrollments/user/${user.id}`),
+           apiFetch<any[]>('/courses/')
+        ]);
+        
+        const enrollments = enrollRes.enrollments || [];
+        const allCourses = coursesRes || [];
+
+        const formattedCourses = allCourses.map((course: any) => {
+          const enr = enrollments.find((e: any) => e.courseId === course.id);
+          return {
+            id: course.id,
+            title: course.title,
+            progress: enr ? (enr.progress || 0) : 0,
+            image: course.image || course.thumbnail,
+            nextLesson: '',
+            lastAccessed: '',
+            completed: enr ? enr.progress === 100 : false
+          };
+        });
         setCourses(formattedCourses);
       } catch (error) {
         console.error('Failed to fetch enrollments', error);

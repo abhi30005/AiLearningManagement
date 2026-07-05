@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
-import { Plus, Edit2, Trash2, BookOpen } from 'lucide-react'
+import { Plus, Edit2, Trash2, BookOpen, Eye } from 'lucide-react'
 import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function TeacherCoursesPage() {
@@ -55,9 +55,10 @@ export default function TeacherCoursesPage() {
       {courses.length === 0 ? (
         <div className="card p-12 text-center">
           <BookOpen className="w-12 h-12 text-secondary-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-secondary-900">No courses yet</h3>
-          <p className="text-secondary-600 mt-2">Start creating your first course to engage students.</p>
-          <button onClick={() => navigate('/courses/new')} className="btn-primary mt-6 mx-auto">
+          <h3 className="text-lg font-medium text-secondary-900 mb-2">No courses yet</h3>
+          <p className="text-secondary-600 mb-6">Create your first course to start teaching.</p>
+          <button onClick={() => navigate('/courses/new')} className="btn-primary mx-auto">
+            <Plus className="w-4 h-4" />
             Create Course
           </button>
         </div>
@@ -84,6 +85,9 @@ export default function TeacherCoursesPage() {
                 <p className="text-sm text-secondary-600 line-clamp-2 mt-1 flex-1">{course.description || 'No description provided.'}</p>
                 <div className="flex items-center gap-2 mt-4 pt-4 border-t border-secondary-100">
                   <button onClick={() => navigate(`/courses/${course.id}`)} className="flex-1 btn-secondary btn-sm justify-center">
+                    <Eye className="w-4 h-4" /> View
+                  </button>
+                  <button onClick={() => navigate(`/courses/${course.id}/edit`)} className="flex-1 btn-secondary btn-sm justify-center">
                     <Edit2 className="w-4 h-4" /> Edit
                   </button>
                   <button onClick={() => handleDelete(course.id)} className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors">

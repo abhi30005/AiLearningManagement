@@ -100,6 +100,7 @@ function AppRoutes() {
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:id" element={<CourseDetailPage />} />
         <Route path="/courses/new" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><CreateCoursePage /></ProtectedRoute>} />
+        <Route path="/courses/:id/edit" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><CreateCoursePage /></ProtectedRoute>} />
         <Route path="/learn/:courseId/lesson/:lessonId" element={<ProtectedRoute><LessonPage /></ProtectedRoute>} />
         <Route path="/learn/:courseId/quiz/:quizId" element={<ProtectedRoute><QuizPage /></ProtectedRoute>} />
         <Route path="/ai-tutor" element={<ProtectedRoute><AITutorPage /></ProtectedRoute>} />
@@ -121,8 +122,7 @@ function AppRoutes() {
         <Route path="/teacher/materials" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMaterialsPage /></ProtectedRoute>} />
 
         {/* Admin Routes */}
-        <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage defaultRole="student" /></ProtectedRoute>} />
-        <Route path="/admin/teachers" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage defaultRole="teacher" /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage defaultRole="all" /></ProtectedRoute>} />
         <Route path="/admin/courses" element={<ProtectedRoute allowedRoles={['admin']}><AdminCoursesPage /></ProtectedRoute>} />
         <Route path="/admin/categories" element={<ProtectedRoute allowedRoles={['admin']}><AdminCategoriesPage /></ProtectedRoute>} />
         <Route path="/admin/enrollments" element={<ProtectedRoute allowedRoles={['admin']}><AdminEnrollmentsPage /></ProtectedRoute>} />

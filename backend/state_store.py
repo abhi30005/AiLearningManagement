@@ -4,13 +4,14 @@ import json
 import uuid
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from threading import Lock
 from typing import Any
 
 from config import settings
 from database import get_database
 
-
+STATE_FILE = Path(__file__).resolve().parent / "data" / "app_state.json"
 STATE_DOC_ID = "app-state"
 VALID_ROLES = {"student", "teacher", "admin"}
 _LOCK = Lock()
@@ -257,54 +258,61 @@ def _mongo_collection():
 
 
 def _sync_mongo_collections(collection, state: dict[str, Any]) -> None:
-    db = collection.database
-    for collection_name in SYNC_COLLECTIONS:
-        rows = state.get(collection_name, [])
-        target = db[collection_name]
-        target.delete_many({})
-        if isinstance(rows, list) and rows:
-            target.insert_many(deepcopy(rows))
-
-    settings_rows = []
-    for user_id, user_settings in state.get("settings", {}).items():
-        if isinstance(user_settings, dict):
-            settings_rows.append({"user_id": user_id, **deepcopy(user_settings)})
-
-    settings_collection = db["settings"]
-    settings_collection.delete_many({})
-    if settings_rows:
-        settings_collection.insert_many(settings_rows)
+    pass
 
 
 def _save_unlocked(state: dict[str, Any]) -> None:
     collection = _mongo_collection()
-    if collection is None:
-        raise Exception("MongoDB is required but not connected.")
-    collection.update_one(
-        {"_id": STATE_DOC_ID},
-        {"$set": {"state": state, "updatedAt": _now_iso()}},
-        upsert=True,
-    )
-    _sync_mongo_collections(collection, state)
+    if collection is not None:
+        collection.update_one(
+            {"_id": STATE_DOC_ID},
+            {"$set": {"state": state, "updatedAt": _now_iso()}},
+            upsert=True,
+        )
+        return
+
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = STATE_FILE.with_suffix(".tmp")
+    tmp_file.write_text(json.dumps(state, ensure_ascii=True, indent=2), encoding="utf-8")
+    tmp_file.replace(STATE_FILE)
 
 
 def _load_unlocked() -> dict[str, Any]:
     collection = _mongo_collection()
-    if collection is None:
-        raise Exception("MongoDB is required but not connected.")
-        
-    document = collection.find_one({"_id": STATE_DOC_ID})
-    if document and isinstance(document.get("state"), dict):
-        raw = document["state"]
-    else:
+    if collection is not None:
+        document = collection.find_one({"_id": STATE_DOC_ID})
+        if document and isinstance(document.get("state"), dict):
+            raw = document["state"]
+        else:
+            raw = _default_state()
+            collection.update_one(
+                {"_id": STATE_DOC_ID},
+                {"$set": {"state": raw, "updatedAt": _now_iso()}},
+                upsert=True,
+            )
+        raw.setdefault("users", [])
+        raw.setdefault("courses", [])
+        raw.setdefault("enrollments", [])
+        raw.setdefault("assignments", [])
+        raw.setdefault("submissions", [])
+        raw.setdefault("materials", [])
+        raw.setdefault("chatHistory", [])
+        raw.setdefault("notifications", [])
+        raw.setdefault("notes", [])
+        raw.setdefault("flashcards", [])
+        raw.setdefault("settings", {})
+        return raw
+
+    if not STATE_FILE.exists():
+        state = _default_state()
+        _save_unlocked(state)
+        return state
+    try:
+        raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
         raw = _default_state()
-        collection.update_one(
-            {"_id": STATE_DOC_ID},
-            {"$set": {"state": raw, "updatedAt": _now_iso()}},
-            upsert=True,
-        )
-        _sync_mongo_collections(collection, raw)
-        
+        _save_unlocked(raw)
+    raw.setdefault("users", [])
     raw.setdefault("courses", [])
     raw.setdefault("enrollments", [])
     raw.setdefault("assignments", [])
@@ -606,12 +614,13 @@ def add_course_chapter(course_id: str, title: str) -> dict[str, Any] | None:
     return None
 
 
-def add_chapter_module(course_id: str, chapter_id: str, title: str, completed: bool, has_pdf: bool) -> dict[str, Any] | None:
+def add_chapter_module(course_id: str, chapter_id: str, title: str, completed: bool, has_pdf: bool, url: str | None = None) -> dict[str, Any] | None:
     module = {
         "id": f"mod-{uuid.uuid4().hex[:8]}",
         "title": title,
         "completed": completed,
         "hasPdf": has_pdf,
+        "url": url,
     }
     with _LOCK:
         state = _load_unlocked()

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../lib/language-context'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
@@ -24,9 +24,10 @@ import {
 
 export default function LessonPage() {
   const { courseId, lessonId } = useParams()
+  const navigate = useNavigate()
   const { t } = useLanguage()
   const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTab, setCurrentTab] = useState<'content' | 'notes'>('content')
+  const [currentTab, setCurrentTab] = useState<'content' | 'notes' | 'resources'>('content')
   const [sidebarTab, setSidebarTab] = useState<'curriculum' | 'tutor'>('tutor')
   const [showSidebar] = useState(true)
 
@@ -34,6 +35,7 @@ export default function LessonPage() {
   const [course, setCourse] = useState<any>(null)
   const [notes, setNotes] = useState<string>('Loading notes...')
   const [loading, setLoading] = useState(true)
+  const [courseMaterials, setCourseMaterials] = useState<any[]>([])
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -54,6 +56,12 @@ export default function LessonPage() {
         // Fetch AI Notes
         const summary = await apiFetch<any>(`/tutor/chapter-summary?chapter_id=${lessonId || 'default'}`, { method: 'POST' })
         setNotes(summary.summary || 'No notes available.')
+
+        // Fetch Materials
+        const materialsData = await apiFetch<any>(`/materials?course_id=${courseId}`)
+        if (materialsData && materialsData.materials) {
+           setCourseMaterials(materialsData.materials)
+        }
       } catch (e) {
         console.error(e)
       } finally {
@@ -144,6 +152,7 @@ export default function LessonPage() {
             {[
               { id: 'content', label: 'Content' },
               { id: 'notes', label: 'AI Notes' },
+              { id: 'resources', label: 'Resources' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -167,8 +176,19 @@ export default function LessonPage() {
             <div className="prose max-w-none">
               <h1 className="text-2xl font-bold text-secondary-900">{currentLesson?.title || 'Lesson'}</h1>
               <p className="text-secondary-600 mt-4">
-                Welcome to this module. Please watch the video to complete this lesson.
+                Welcome to this module. Please review the material to complete this lesson.
               </p>
+              {currentLesson?.url && (
+                <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100 flex items-center justify-between not-prose">
+                  <div>
+                    <h3 className="font-semibold text-primary-900 mb-1">Lesson Resource</h3>
+                    <p className="text-sm text-primary-700">Access the attached material or link for this lesson.</p>
+                  </div>
+                  <a href={currentLesson.url} target="_blank" rel="noreferrer" className="btn-primary whitespace-nowrap">
+                    Open Resource
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -185,6 +205,29 @@ export default function LessonPage() {
               </div>
             </div>
           )}
+
+          {currentTab === 'resources' && (
+            <div>
+              <h2 className="text-lg font-semibold text-secondary-900 mb-4">Course Materials</h2>
+              {courseMaterials.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {courseMaterials.map((m, i) => (
+                    <a key={i} href={m.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 bg-secondary-50 hover:bg-secondary-100 rounded-lg transition-colors border border-secondary-200">
+                      <div className="p-2 bg-white rounded-lg text-secondary-600">
+                         {m.material_type === 'youtube' ? <Play className="w-5 h-5 text-error-600" /> : <FileText className="w-5 h-5 text-primary-600" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <p className="font-medium text-secondary-900 truncate">{m.title}</p>
+                         <p className="text-xs text-secondary-500 uppercase">{m.type || m.material_type}</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-secondary-600">No materials available for this course.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer Navigation */}
@@ -192,7 +235,7 @@ export default function LessonPage() {
           <button
             disabled={currentLessonIndex <= 0}
             className="btn-secondary disabled:opacity-50"
-            onClick={() => window.location.href = `/learn/${courseId}/lesson/${lessons[currentLessonIndex - 1]?.id}`}
+            onClick={() => navigate(`/learn/${courseId}/lesson/${lessons[currentLessonIndex - 1]?.id}`)}
           >
             <ChevronLeft className="w-4 h-4" />
             Previous
@@ -204,7 +247,7 @@ export default function LessonPage() {
           <button
             disabled={currentLessonIndex >= lessons.length - 1}
             className="btn-primary disabled:opacity-50"
-            onClick={() => window.location.href = `/learn/${courseId}/lesson/${lessons[currentLessonIndex + 1]?.id}`}
+            onClick={() => navigate(`/learn/${courseId}/lesson/${lessons[currentLessonIndex + 1]?.id}`)}
           >
             Next
             <ChevronRight className="w-4 h-4" />
