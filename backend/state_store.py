@@ -525,6 +525,49 @@ def delete_user(user_id: str) -> bool:
         return changed
 
 
+def mark_lesson_completed(user_id: str, course_id: str, lesson_id: str) -> dict[str, Any] | None:
+    with _LOCK:
+        state = _load_unlocked()
+        course = next((row for row in state["courses"] if row["id"] == course_id), None)
+        if not course:
+            return None
+        
+        total_lessons = sum(len(chapter.get("modules", [])) for chapter in course.get("chapters", []))
+        if total_lessons == 0:
+            total_lessons = 1
+            
+        enrollment = next(
+            (row for row in state.setdefault("enrollments", []) if row.get("userId") == user_id and row.get("courseId") == course_id),
+            None,
+        )
+        
+        if not enrollment:
+            enrollment = {
+                "id": f"enr-{uuid.uuid4().hex[:10]}",
+                "userId": user_id,
+                "courseId": course_id,
+                "lessonsCompleted": [],
+                "progress": 0,
+                "quizPassed": False,
+                "assignmentsCompleted": False,
+                "completed": False,
+                "createdAt": _now_iso(),
+            }
+            state["enrollments"].insert(0, enrollment)
+            
+        lessons_completed = enrollment.setdefault("lessonsCompleted", [])
+        if lesson_id not in lessons_completed:
+            lessons_completed.append(lesson_id)
+            
+        progress = int((len(lessons_completed) / total_lessons) * 100)
+        enrollment["progress"] = min(100, progress)
+        enrollment["completed"] = enrollment["progress"] >= 100
+        enrollment["updatedAt"] = _now_iso()
+        
+        _save_unlocked(state)
+        return deepcopy(enrollment)
+
+
 def list_courses() -> list[dict[str, Any]]:
     with _LOCK:
         state = _load_unlocked()

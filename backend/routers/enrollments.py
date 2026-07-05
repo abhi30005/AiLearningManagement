@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from state_store import list_all_enrollments, delete_enrollment, list_enrollments, get_course, enroll_user_in_course, get_user_by_id
+from state_store import list_all_enrollments, delete_enrollment, list_enrollments, get_course, enroll_user_in_course, get_user_by_id, mark_lesson_completed
 
 router = APIRouter(prefix="/enrollments", tags=["Enrollments Management"])
 
@@ -47,3 +47,13 @@ async def remove_enrollment(enrollment_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Enrollment not found")
     return {"success": True}
+
+class LessonCompleteRequest(BaseModel):
+    userId: str
+
+@router.post("/{course_id}/lessons/{lesson_id}/complete")
+async def complete_lesson(course_id: str, lesson_id: str, req: LessonCompleteRequest):
+    enrollment = mark_lesson_completed(req.userId, course_id, lesson_id)
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment or course not found")
+    return {"success": True, "enrollment": enrollment}

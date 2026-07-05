@@ -32,9 +32,12 @@ export default function LessonPage() {
   const [showSidebar] = useState(true)
 
   const [lessons, setLessons] = useState<any[]>([])
+  const [chapters, setChapters] = useState<any[]>([])
   const [course, setCourse] = useState<any>(null)
+  const [enrollment, setEnrollment] = useState<any>(null)
   const [notes, setNotes] = useState<string>('Loading notes...')
   const [loading, setLoading] = useState(true)
+  const [completing, setCompleting] = useState(false)
   const [courseMaterials, setCourseMaterials] = useState<any[]>([])
 
   useEffect(() => {
@@ -42,6 +45,7 @@ export default function LessonPage() {
       try {
         const data = await apiFetch<any>(`/courses/${courseId}`)
         setCourse(data)
+        setChapters(data.chapters || [])
         
         let allLessons: any[] = []
         if (data.chapters) {
@@ -62,6 +66,14 @@ export default function LessonPage() {
         if (materialsData && materialsData.materials) {
            setCourseMaterials(materialsData.materials)
         }
+
+        if (user) {
+          const enrData = await apiFetch<any>(`/enrollments/user/${user.id}`)
+          if (enrData && enrData.enrollments) {
+            const courseEnr = enrData.enrollments.find((e: any) => e.courseId === courseId)
+            if (courseEnr) setEnrollment(courseEnr)
+          }
+        }
       } catch (e) {
         console.error(e)
       } finally {
@@ -69,10 +81,46 @@ export default function LessonPage() {
       }
     }
     fetchCourse()
-  }, [courseId, lessonId])
+  }, [courseId, lessonId, user])
 
   const currentLessonIndex = lessons.findIndex((l) => String(l.id) === String(lessonId))
   const currentLesson = lessons[currentLessonIndex] || {}
+  
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  const getResourceUrl = (url: string) => {
+    if (!url) return ''
+    if (url.startsWith('/')) return `${API_URL}${url}`
+    return url
+  }
+  
+  const getYouTubeId = (url: string) => {
+    if (!url) return null
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&]{11})/)
+    return match ? match[1] : null
+  }
+
+  const handleMarkComplete = async () => {
+    if (completing || !currentLesson.id) return
+    setCompleting(true)
+    try {
+      const res = await apiFetch<any>(`/enrollments/${courseId}/lessons/${currentLesson.id}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ userId: user?.id })
+      })
+      if (res.success && res.enrollment) {
+        setEnrollment(res.enrollment)
+        // Auto-navigate to next if available
+        if (currentLessonIndex < lessons.length - 1) {
+          navigate(`/learn/${courseId}/lesson/${lessons[currentLessonIndex + 1]?.id}`)
+        }
+      }
+    } catch (e) {
+      console.error(e)
+      alert("Failed to mark complete")
+    } finally {
+      setCompleting(false)
+    }
+  }
 
   if (loading) {
     return <PageLoader type="detail" />
@@ -82,69 +130,46 @@ export default function LessonPage() {
     <div className="flex h-[calc(100vh-120px)]">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Video Player */}
-        <div className="relative bg-secondary-900 aspect-video">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <img
-              src="https://images.pexels.com/photos/8566472/pexels-photo-8566472.jpeg?auto=compress&cs=tinysrgb&w=800"
-              alt="Lesson thumbnail"
-              className="w-full h-full object-cover opacity-50"
+        {/* Media Player Area */}
+        {currentLesson?.type === 'youtube' && currentLesson?.url ? (
+          <div className="relative bg-black aspect-video w-full">
+            <iframe
+              className="w-full h-full"
+              src={`https://www.youtube.com/embed/${getYouTubeId(currentLesson.url)}`}
+              allowFullScreen
+              title={currentLesson.title}
             />
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="absolute inset-0 flex items-center justify-center"
-            >
-              <div className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center hover:scale-105 transition-transform">
-                {isPlaying ? (
-                  <Pause className="w-8 h-8 text-secondary-900" />
-                ) : (
-                  <Play className="w-8 h-8 text-secondary-900 ml-1" />
-                )}
-              </div>
-            </button>
           </div>
-
-          {/* Video Controls */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex-1 h-1 bg-secondary-600 rounded-full overflow-hidden">
-                <div className="h-full w-1/3 bg-primary-500 rounded-full" />
-              </div>
-              <span className="text-sm text-white">5:12 / 15:30</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                  <SkipBack className="w-5 h-5 text-white" />
-                </button>
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-5 h-5 text-white" />
-                  ) : (
-                    <Play className="w-5 h-5 text-white" />
-                  )}
-                </button>
-                <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                  <SkipForward className="w-5 h-5 text-white" />
-                </button>
-                <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                  <Volume2 className="w-5 h-5 text-white" />
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                  <Settings className="w-5 h-5 text-white" />
-                </button>
-                <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                  <Maximize className="w-5 h-5 text-white" />
-                </button>
+        ) : (currentLesson?.type === 'website' || currentLesson?.type === 'doc') && currentLesson?.url ? (
+          <div className="relative bg-secondary-100 flex flex-col flex-1 min-h-[500px]">
+             {/* Top bar for opening in new tab if iframe blocked */}
+             <div className="bg-white p-2 border-b border-secondary-200 flex justify-end">
+               <a href={getResourceUrl(currentLesson.url)} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
+                 <Maximize className="w-4 h-4" /> Open in New Tab
+               </a>
+             </div>
+             <iframe
+                className="w-full h-full flex-1"
+                src={getResourceUrl(currentLesson.url)}
+                title={currentLesson.title}
+             />
+          </div>
+        ) : (
+          <div className="relative bg-secondary-900 aspect-video">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <img
+                src={course?.thumbnail || course?.image || "https://images.pexels.com/photos/8566472/pexels-photo-8566472.jpeg?auto=compress&cs=tinysrgb&w=800"}
+                alt="Lesson thumbnail"
+                className="w-full h-full object-cover opacity-50"
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                <FileText className="w-12 h-12 mb-2 text-secondary-300" />
+                <p className="text-lg font-medium text-secondary-200">No media attached to this lesson.</p>
+                <p className="text-sm text-secondary-400">Please review the content below.</p>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Tabs */}
         <div className="border-b border-secondary-200">
@@ -184,7 +209,7 @@ export default function LessonPage() {
                     <h3 className="font-semibold text-primary-900 mb-1">Lesson Resource</h3>
                     <p className="text-sm text-primary-700">Access the attached material or link for this lesson.</p>
                   </div>
-                  <a href={currentLesson.url} target="_blank" rel="noreferrer" className="btn-primary whitespace-nowrap">
+                  <a href={getResourceUrl(currentLesson.url)} target="_blank" rel="noreferrer" className="btn-primary whitespace-nowrap">
                     Open Resource
                   </a>
                 </div>
@@ -240,9 +265,13 @@ export default function LessonPage() {
             <ChevronLeft className="w-4 h-4" />
             Previous
           </button>
-          <button className="btn-accent">
+          <button 
+            disabled={completing || enrollment?.lessonsCompleted?.includes(currentLesson.id)}
+            className="btn-accent"
+            onClick={handleMarkComplete}
+          >
             <CheckCircle className="w-4 h-4" />
-            Mark Complete
+            {enrollment?.lessonsCompleted?.includes(currentLesson.id) ? 'Completed' : 'Mark Complete'}
           </button>
           <button
             disabled={currentLessonIndex >= lessons.length - 1}
@@ -283,29 +312,42 @@ export default function LessonPage() {
 
           <div className="flex-1 overflow-y-auto">
             {sidebarTab === 'curriculum' ? (
-              <div className="p-4 space-y-2">
-                {lessons.map((lesson, index) => (
-                  <Link
-                    key={lesson.id}
-                    to={`/learn/${courseId}/lesson/${lesson.id}`}
-                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                      String(lesson.id) === String(lessonId)
-                        ? 'bg-primary-50 text-primary-700'
-                        : 'hover:bg-secondary-50 text-secondary-700'
-                    }`}
-                  >
-                    <span className="text-sm font-medium">
-                      {lesson.completed ? (
-                        <CheckCircle className="w-5 h-5 text-accent-500" />
-                      ) : (
-                        <span className="w-5 h-5 rounded-full border-2 border-secondary-300 flex items-center justify-center text-xs">
-                          {index + 1}
-                        </span>
-                      )}
-                    </span>
-                    <span className="flex-1 text-sm truncate">{lesson.title}</span>
-                    <span className="text-xs text-secondary-500">{lesson.duration}</span>
-                  </Link>
+              <div className="space-y-4 p-4">
+                {chapters.map((chapter: any, chapIndex: number) => (
+                  <div key={chapter.id}>
+                    <h3 className="text-xs font-bold text-secondary-400 uppercase tracking-wider mb-2">
+                      Chapter {chapIndex + 1}: {chapter.title}
+                    </h3>
+                    <div className="space-y-1">
+                      {chapter.modules?.map((lesson: any, index: number) => {
+                        const isCompleted = enrollment?.lessonsCompleted?.includes(lesson.id)
+                        const isCurrent = String(lesson.id) === String(lessonId)
+                        return (
+                          <Link
+                            key={lesson.id}
+                            to={`/learn/${courseId}/lesson/${lesson.id}`}
+                            className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                              isCurrent
+                                ? 'bg-primary-50 text-primary-700 font-medium'
+                                : 'hover:bg-secondary-50 text-secondary-700'
+                            }`}
+                          >
+                            <span className="text-sm">
+                              {isCompleted ? (
+                                <CheckCircle className="w-5 h-5 text-accent-500" />
+                              ) : (
+                                <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${isCurrent ? 'border-primary-500' : 'border-secondary-300'}`}>
+                                  {index + 1}
+                                </span>
+                              )}
+                            </span>
+                            <span className="flex-1 text-sm truncate">{lesson.title}</span>
+                            <span className="text-xs text-secondary-500">{lesson.type}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
