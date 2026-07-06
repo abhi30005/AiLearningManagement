@@ -39,7 +39,13 @@ export default function CreateCoursePage() {
   const [thumbnail, setThumbnail] = useState('')
   const [thumbnailName, setThumbnailName] = useState('')
   const [modules, setModules] = useState<Module[]>([
-    { id: '1', title: 'Module 1: Introduction', lessons: [] },
+    {
+      id: '1',
+      title: 'Introduction',
+      lessons: [
+        { id: '1', title: 'Welcome to the Course', type: 'youtube', url: 'https://youtu.be/dummy' }
+      ]
+    }
   ])
   const [expandedModule, setExpandedModule] = useState<string | null>('1')
 
@@ -226,7 +232,8 @@ export default function CreateCoursePage() {
                 completed: false,
                 hasPdf: l.type === 'doc',
                 quiz: l.type === 'quiz',
-                url: l.url
+                url: l.url,
+                type: l.type
               }))
             }))
           })
@@ -256,7 +263,8 @@ export default function CreateCoursePage() {
                       completed: false,
                       hasPdf: lesson.type === 'doc',
                       quiz: lesson.type === 'quiz',
-                      url: lesson.url
+                      url: lesson.url,
+                      type: lesson.type
                     }),
                   })
                 }

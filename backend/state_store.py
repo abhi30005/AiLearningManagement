@@ -197,16 +197,16 @@ def add_course_chapter(course_id: str, title: str) -> dict[str, Any] | None:
     ch_id = f'{course_id}-ch-{uuid.uuid4().hex[:4]}'
     ch = {'id': ch_id, 'title': title, 'modules': []}
     get_collection('courses').update_one({'id': course_id}, {'$push': {'chapters': ch}})
-    return get_course(course_id)
+    return ch
 
-def add_chapter_module(course_id: str, chapter_id: str, title: str, completed: bool, has_pdf: bool) -> dict[str, Any] | None:
+def add_chapter_module(course_id: str, chapter_id: str, title: str, completed: bool, has_pdf: bool, url: str | None = None, type: str | None = None) -> dict[str, Any] | None:
     m_id = f'{chapter_id}-m-{uuid.uuid4().hex[:4]}'
-    mod = {'id': m_id, 'title': title, 'completed': completed, 'hasPdf': has_pdf}
+    mod = {'id': m_id, 'title': title, 'completed': completed, 'hasPdf': has_pdf, 'url': url or "", 'type': type or "video"}
     get_collection('courses').update_one(
         {'id': course_id, 'chapters.id': chapter_id},
         {'$push': {'chapters.$.modules': mod}}
     )
-    return get_course(course_id)
+    return mod
 
 def list_chapter_modules(course_id: str, chapter_id: str) -> list[dict[str, Any]] | None:
     course = get_course(course_id)

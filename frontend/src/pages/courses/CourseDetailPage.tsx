@@ -86,8 +86,8 @@ export default function CourseDetailPage() {
             <div className="flex flex-wrap items-center gap-6 text-secondary-200 mb-6">
               <span className="flex items-center gap-2">
                 <Star className="w-5 h-5 text-warning-400 fill-warning-400" />
-                <span className="font-semibold text-white">{courseData.rating}</span>
-                <span>({courseData.students.toLocaleString()} students)</span>
+                <span className="font-semibold text-white">{courseData.rating || '4.5'}</span>
+                <span>({(courseData.studentsCount || courseData.students || 0).toLocaleString()} students)</span>
               </span>
               <span className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
@@ -146,38 +146,38 @@ export default function CourseDetailPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-secondary-900">Course Curriculum</h2>
               <span className="text-sm text-secondary-600">
-                {courseData.modules?.reduce((acc: number, m: any) => acc + (m.modules?.length || 0), 0) || 0} lessons
+                {(courseData.chapters || courseData.modules)?.reduce((acc: number, m: any) => acc + (m.modules?.length || 0), 0) || 0} lessons
               </span>
             </div>
 
             <div className="space-y-4">
-              {courseData.modules?.map((module: any) => (
-                <div key={module.id} className="border border-secondary-200 rounded-lg overflow-hidden">
+              {(courseData.chapters || courseData.modules)?.map((chapter: any) => (
+                <div key={chapter.id} className="border border-secondary-200 rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setExpandedModule(expandedModule === module.id ? null : module.id)}
+                    onClick={() => setExpandedModule(expandedModule === chapter.id ? null : chapter.id)}
                     className="w-full flex items-center justify-between p-4 bg-secondary-50 hover:bg-secondary-100 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      {expandedModule === module.id ? (
+                      {expandedModule === chapter.id ? (
                         <ChevronDown className="w-5 h-5 text-secondary-600" />
                       ) : (
                         <ChevronRight className="w-5 h-5 text-secondary-600" />
                       )}
-                      <span className="font-medium text-secondary-900">{module.title}</span>
+                      <span className="font-medium text-secondary-900">{chapter.title}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm text-secondary-600">
-                      <span>{module.modules?.length || 0} lessons</span>
-                      {module.quiz && (
+                      <span>{chapter.modules?.length || 0} lessons</span>
+                      {chapter.quiz && (
                         <span className="px-2 py-0.5 bg-secondary-200 rounded text-xs">
-                          {module.quiz.questions} questions
+                          {chapter.quiz.questions} questions
                         </span>
                       )}
                     </div>
                   </button>
 
-                  {expandedModule === module.id && (
+                  {expandedModule === chapter.id && (
                     <div className="border-t border-secondary-200">
-                      {module.modules?.map((lesson: any) => (
+                      {chapter.modules?.map((lesson: any) => (
                         <Link
                           key={lesson.id}
                           to={`/learn/${id}/lesson/${lesson.id}`}
@@ -198,15 +198,15 @@ export default function CourseDetailPage() {
                           <span className="text-sm text-secondary-500">{lesson.duration}</span>
                         </Link>
                       ))}
-                      {module.quiz && (
+                      {chapter.quiz && (
                         <Link
-                          to={`/learn/${id}/quiz/${module.quiz.id}`}
+                          to={`/learn/${id}/quiz/${chapter.quiz.id}`}
                           className={`flex items-center gap-3 p-3 border-t border-secondary-200 hover:bg-secondary-50 bg-primary-50`}
                         >
                           <FileText className="w-5 h-5 text-primary-600" />
-                          <span className="font-medium text-primary-700">{module.quiz.title}</span>
+                          <span className="font-medium text-primary-700">{chapter.quiz.title}</span>
                           <span className="text-sm text-secondary-600 ml-auto">
-                            {module.quiz.questions} questions
+                            {chapter.quiz.questions} questions
                           </span>
                         </Link>
                       )}
@@ -242,7 +242,7 @@ export default function CourseDetailPage() {
             </div>
 
               <Link
-                to={`/learn/${id}/lesson/${courseData.modules?.[0]?.modules?.[0]?.id || '1'}`}
+                to={`/learn/${id}/lesson/${(courseData.chapters || courseData.modules)?.[0]?.modules?.[0]?.id || '1'}`}
                 className="btn-primary w-full mb-4"
               >
                 <PlayCircle className="w-5 h-5" />
@@ -277,7 +277,7 @@ export default function CourseDetailPage() {
                   {courseMaterials.map((resource: any, i: number) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-secondary-600">
                       <File className="w-4 h-4" />
-                      <a href={resource.url} target="_blank" rel="noreferrer" className="hover:text-primary-600 hover:underline truncate" title={resource.title}>
+                      <a href={resource.url?.startsWith('/') ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${resource.url}` : resource.url} target="_blank" rel="noreferrer" className="hover:text-primary-600 hover:underline truncate" title={resource.title}>
                         {resource.title}
                       </a>
                       <span className="text-secondary-400 ml-auto uppercase text-xs">{resource.type || resource.material_type}</span>

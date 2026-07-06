@@ -11,6 +11,9 @@ from routers import auth, users, courses, materials, rag, tutor, ai_content
 from routers import assessments, collaboration, search, analytics, gamification, reports, notifications, support
 from routers import categories, enrollments
 
+from fastapi.staticfiles import StaticFiles
+import os
+
 app = FastAPI(
     title=f"{settings.APP_NAME} API",
     description="Backend API for AI-Powered Learning Management System",
@@ -49,6 +52,9 @@ app.include_router(notifications.router)
 app.include_router(support.router)
 app.include_router(categories.router)
 app.include_router(enrollments.router)
+
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.on_event("startup")
 async def bootstrap_system_admin():

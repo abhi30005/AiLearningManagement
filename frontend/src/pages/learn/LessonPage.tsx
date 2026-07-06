@@ -20,6 +20,7 @@ import {
   Maximize,
   SkipBack,
   SkipForward,
+  Globe,
 } from 'lucide-react'
 
 
@@ -48,11 +49,12 @@ export default function LessonPage() {
       try {
         const data = await apiFetch<any>(`/courses/${courseId}`)
         setCourse(data)
-        setChapters(data.chapters || [])
+        const courseChapters = data.chapters || data.modules || []
+        setChapters(courseChapters)
         
         let allLessons: any[] = []
-        if (data.chapters) {
-           data.chapters.forEach((chapter: any) => {
+        if (courseChapters.length > 0) {
+           courseChapters.forEach((chapter: any) => {
              if (chapter.modules) {
                allLessons = [...allLessons, ...chapter.modules]
              }
@@ -93,6 +95,7 @@ export default function LessonPage() {
   const getResourceUrl = (url: string) => {
     if (!url) return ''
     if (url.startsWith('/')) return `${API_URL}${url}`
+    if (!/^https?:\/\//i.test(url)) return `https://${url}`
     return url
   }
   
@@ -100,6 +103,16 @@ export default function LessonPage() {
     if (!url) return null
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&]{11})/)
     return match ? match[1] : null
+  }
+
+  const isIframeBlocked = (url: string) => {
+    if (!url) return false
+    const lower = url.toLowerCase()
+    return lower.includes('w3schools.com') || 
+           lower.includes('github.com') || 
+           lower.includes('stackoverflow.com') || 
+           lower.includes('google.com') ||
+           (lower.includes('youtube.com') && !getYouTubeId(url))
   }
 
   const handleMarkComplete = async () => {
@@ -134,7 +147,7 @@ export default function LessonPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Media Player Area */}
-        {currentLesson?.type === 'youtube' && currentLesson?.url ? (
+        {((currentLesson?.type === 'youtube' || currentLesson?.type === 'video' || getYouTubeId(currentLesson?.url)) && getYouTubeId(currentLesson?.url)) ? (
           <div className="relative bg-black aspect-video w-full">
             <iframe
               className="w-full h-full"
@@ -151,11 +164,25 @@ export default function LessonPage() {
                  <Maximize className="w-4 h-4" /> Open in New Tab
                </a>
              </div>
-             <iframe
-                className="w-full h-full flex-1"
-                src={getResourceUrl(currentLesson.url)}
-                title={currentLesson.title}
-             />
+             {isIframeBlocked(currentLesson.url) ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-secondary-50">
+                   <Globe className="w-16 h-16 text-secondary-400 mb-4" />
+                   <h3 className="text-xl font-semibold text-secondary-900 mb-2">External Website</h3>
+                   <p className="text-secondary-600 max-w-md mb-6">
+                      This website does not allow being embedded directly inside other applications. 
+                      Please open it in a new tab to view the content.
+                   </p>
+                   <a href={getResourceUrl(currentLesson.url)} target="_blank" rel="noreferrer" className="btn-primary">
+                     <Maximize className="w-4 h-4 mr-2" /> Open in New Tab
+                   </a>
+                </div>
+             ) : (
+               <iframe
+                  className="w-full h-full flex-1"
+                  src={getResourceUrl(currentLesson.url)}
+                  title={currentLesson.title}
+               />
+             )}
           </div>
         ) : (
           <div className="relative bg-secondary-900 aspect-video">
@@ -240,7 +267,7 @@ export default function LessonPage() {
               {courseMaterials.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {courseMaterials.map((m, i) => (
-                    <a key={i} href={m.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 bg-secondary-50 hover:bg-secondary-100 rounded-lg transition-colors border border-secondary-200">
+                    <a key={i} href={getResourceUrl(m.url)} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 bg-secondary-50 hover:bg-secondary-100 rounded-lg transition-colors border border-secondary-200">
                       <div className="p-2 bg-white rounded-lg text-secondary-600">
                          {m.material_type === 'youtube' ? <Play className="w-5 h-5 text-error-600" /> : <FileText className="w-5 h-5 text-primary-600" />}
                       </div>

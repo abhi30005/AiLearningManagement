@@ -57,6 +57,7 @@ class ModuleCreateReq(BaseModel):
     completed: bool = False
     hasPdf: bool = False
     url: Optional[str] = None
+    type: Optional[str] = None
 
 
 class EnrollmentReq(BaseModel):
@@ -155,7 +156,7 @@ async def add_chapter(course_id: str, req: ChapterCreateReq):
 
 @router.post("/{course_id}/chapters/{chapter_id}/modules")
 async def add_module(course_id: str, chapter_id: str, req: ModuleCreateReq):
-    module = add_chapter_module(course_id, chapter_id, req.title, req.completed, req.hasPdf, req.url)
+    module = add_chapter_module(course_id, chapter_id, req.title, req.completed, req.hasPdf, req.url, req.type)
     if not module:
         raise HTTPException(status_code=404, detail="Course or chapter not found")
     return {"success": True, "module": module}
