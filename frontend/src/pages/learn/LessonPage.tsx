@@ -26,6 +26,7 @@ export default function LessonPage() {
   const { courseId, lessonId } = useParams()
   const navigate = useNavigate()
   const { t } = useLanguage()
+  const { user } = useAuth()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTab, setCurrentTab] = useState<'content' | 'notes' | 'resources'>('content')
   const [sidebarTab, setSidebarTab] = useState<'curriculum' | 'tutor'>('tutor')
