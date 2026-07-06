@@ -54,8 +54,7 @@ def get_database_status():
 
 def wait_for_database():
     if not settings.MONGODB_URI:
-        print("Skipping MongoDB connection: MONGODB_URI is empty. Using local JSON state.")
-        return {"database": "disconnected", "connected": False}
+        raise Exception("MongoDB connection failed: MONGODB_URI is empty.")
 
     attempts = max(settings.MONGODB_CONNECT_ATTEMPTS, 1)
     for attempt in range(1, attempts + 1):
@@ -65,8 +64,7 @@ def wait_for_database():
         if attempt < attempts:
             time.sleep(settings.MONGODB_RETRY_DELAY_SECONDS)
 
-    print("Warning: MongoDB not connected. Falling back to local JSON.")
-    return {"database": "disconnected", "connected": False}
+    raise Exception("MongoDB not connected. All attempts failed.")
 
 def get_collection(name: str):
     db = get_database()
