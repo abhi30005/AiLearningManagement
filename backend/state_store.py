@@ -168,19 +168,20 @@ def list_courses() -> list[dict[str, Any]]:
 def get_course(course_id: str) -> dict[str, Any] | None:
     return get_collection('courses').find_one({'id': course_id}, {'_id': 0})
 
-def create_course(title: str, description: str, category: str, teacher_id: str | None = None) -> dict[str, Any]:
+def create_course(title: str, description: str, category: str, teacher_id: str | None = None, thumbnail: str | None = None, level: str | None = None, language: str | None = None) -> dict[str, Any]:
     c_id = f'c-{uuid.uuid4().hex[:8]}'
     course = {
         'id': c_id,
         'title': title,
         'description': description,
         'category': category,
-        'level': 'Level 1',
+        'level': level or 'Level 1',
+        'language': language or 'en',
         'studentsCount': 0,
         'weeks': settings.DEFAULT_COURSE_WEEKS,
         'progress': 0,
         'active': True,
-        'image': 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
+        'image': thumbnail or 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
         'teacherId': teacher_id or settings.DEFAULT_TEACHER_ID,
         'chapters': [],
         'createdAt': _now_iso(),

@@ -170,16 +170,11 @@ async def list_modules(course_id: str, chapter_id: str):
 
 @router.delete("/{course_id}/chapters/{chapter_id}/modules/{module_id}")
 async def delete_module(course_id: str, chapter_id: str, module_id: str):
-    from state_store import _LOCK, _load_unlocked, _save_unlocked
-    with _LOCK:
-        state = _load_unlocked()
-        for course in state.get("courses", []):
-            if course["id"] == course_id:
-                for chapter in course.get("chapters", []):
-                    if chapter["id"] == chapter_id:
-                        original_len = len(chapter.get("modules", []))
-                        chapter["modules"] = [m for m in chapter.get("modules", []) if m["id"] != module_id]
-                        if len(chapter["modules"]) != original_len:
-                            _save_unlocked(state)
-                            return {"success": True}
+    from database import get_collection
+    result = get_collection('courses').update_one(
+        {'id': course_id, 'chapters.id': chapter_id},
+        {'$pull': {'chapters.$.modules': {'id': module_id}}}
+    )
+    if result.modified_count > 0:
+        return {"success": True}
     raise HTTPException(status_code=404, detail="Module not found")
