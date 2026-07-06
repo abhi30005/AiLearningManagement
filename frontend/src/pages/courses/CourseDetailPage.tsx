@@ -26,16 +26,24 @@ export default function CourseDetailPage() {
   const [expandedModule, setExpandedModule] = useState<number | null>(1)
   const [courseData, setCourseData] = useState<any>(null)
   const [courseMaterials, setCourseMaterials] = useState<any[]>([])
+  const [enrollment, setEnrollment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const data = await apiFetch<any>(`/courses/${id}`)
+        const [data, materialsData, enrollRes] = await Promise.all([
+           apiFetch<any>(`/courses/${id}`),
+           apiFetch<any>(`/materials?course_id=${id}`),
+           user ? apiFetch<any>(`/enrollments/user/${user.id}`).catch(() => null) : Promise.resolve(null)
+        ])
         setCourseData(data)
-        const materialsData = await apiFetch<any>(`/materials?course_id=${id}`)
         if (materialsData && materialsData.materials) {
           setCourseMaterials(materialsData.materials)
+        }
+        if (enrollRes && enrollRes.enrollments) {
+          const enr = enrollRes.enrollments.find((e: any) => e.courseId === id)
+          setEnrollment(enr)
         }
       } catch (error) {
         console.error('Error fetching course details:', error)
@@ -216,20 +224,43 @@ export default function CourseDetailPage() {
               ))}
             </div>
             
-              <div className="mt-8 p-6 bg-accent-50 border border-accent-200 rounded-xl flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-accent-800 flex items-center gap-2">
-                    <Award className="w-5 h-5" />
-                    Final AI Quiz & Certification
-                  </h3>
-                  <p className="text-sm text-accent-700 mt-1">
-                    Pass the final AI generated assessment with 75%+ to earn your certificate and badges.
-                  </p>
-                </div>
-                <Link to={`/learn/${id}/quiz/final`} className="btn-accent whitespace-nowrap">
+            <div className={`mt-8 p-6 border rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all ${
+               enrollment?.progress === 100 
+                 ? 'bg-accent-50 border-accent-200' 
+                 : 'bg-secondary-50 border-secondary-200 opacity-90'
+            }`}>
+              <div>
+                <h3 className={`font-bold flex items-center gap-2 ${enrollment?.progress === 100 ? 'text-accent-800' : 'text-secondary-800'}`}>
+                  <Award className="w-5 h-5" />
+                  Final AI Quiz & Certification
+                </h3>
+                <p className={`text-sm mt-1 ${enrollment?.progress === 100 ? 'text-accent-700' : 'text-secondary-600'}`}>
+                  Pass the final AI generated assessment with 75%+ to earn your certificate and badges.
+                </p>
+                {/* Status Message */}
+                {(!enrollment) && (
+                   <p className="text-xs text-error-600 font-medium mt-2 flex items-center gap-1">
+                     <Lock className="w-3 h-3" /> Please enroll in the course to unlock the final quiz.
+                   </p>
+                )}
+                {(enrollment && enrollment.progress < 100) && (
+                   <p className="text-xs text-warning-600 font-medium mt-2 flex items-center gap-1">
+                     <Lock className="w-3 h-3" /> Complete all course modules to unlock the final quiz. (Current Progress: {enrollment.progress}%)
+                   </p>
+                )}
+              </div>
+              
+              {enrollment?.progress === 100 ? (
+                <Link to={`/learn/${id}/quiz/final`} className="btn-accent whitespace-nowrap shrink-0">
                   Take Final Quiz
                 </Link>
-              </div>
+              ) : (
+                <button disabled className="btn-secondary whitespace-nowrap shrink-0 opacity-60 cursor-not-allowed flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Take Final Quiz
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

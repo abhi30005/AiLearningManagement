@@ -138,10 +138,10 @@ export default function StudentDashboard() {
                 <p className="text-sm text-secondary-600 mt-1">Next: {course.nextLesson}</p>
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-sm font-medium text-primary-600">{course.progress}% complete</span>
-                  <button className="btn-sm btn-primary">
+                  <Link to={`/learn/${course.id}/lesson/${course.nextLessonId || 'default'}`} className="btn-sm btn-primary">
                     <PlayCircle className="w-4 h-4" />
                     Resume
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>

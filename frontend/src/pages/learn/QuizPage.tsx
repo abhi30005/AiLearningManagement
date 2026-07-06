@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../lib/language-context'
+import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
 import { PageLoader } from '../../components/ui/PageLoader'
 import {
@@ -28,6 +29,7 @@ export default function QuizPage() {
   const { courseId } = useParams()
   const navigate = useNavigate()
   const { t } = useLanguage()
+  const { user } = useAuth()
 
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<Record<string | number, number | string>>({})
@@ -77,9 +79,10 @@ export default function QuizPage() {
   }
 
   const question = questions[currentQuestion]
-  const isAnswered = answers[question.id] !== undefined
+  const isAnswered = answers[question?.id] !== undefined
 
   const handleAnswer = (answer: number | string) => {
+    if (!question) return;
     setAnswers({ ...answers, [question.id]: answer })
   }
 
@@ -90,6 +93,7 @@ export default function QuizPage() {
       const res = await apiFetch<any>('/assessments/submit-quiz', {
         method: 'POST',
         body: JSON.stringify({
+          userId: user?.id,
           courseId,
           score,
         })
@@ -191,12 +195,24 @@ export default function QuizPage() {
             >
               {t('quizzes.retakeQuiz')}
             </button>
-            <button
-              onClick={() => setReviewMode(true)}
-              className="btn-primary"
-            >
-              {t('quizzes.quizResults')}
-            </button>
+            {passed ? (
+              <button
+                onClick={() => {
+                   navigate('/student/certificates');
+                }}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Award className="w-4 h-4" />
+                View Certificate
+              </button>
+            ) : (
+              <button
+                onClick={() => setReviewMode(true)}
+                className="btn-primary"
+              >
+                {t('quizzes.quizResults')}
+              </button>
+            )}
           </div>
         </div>
       </div>

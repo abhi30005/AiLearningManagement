@@ -138,4 +138,40 @@ async def voice_chat_with_tutor(data: VoiceRequest):
 @router.post("/chapter-summary")
 async def get_chapter_summary(chapter_id: str):
     """Chapter Summaries"""
-    return {"summary": "AI generated summary here."}
+    from database import get_collection
+    
+    lesson_title = "Unknown Lesson"
+    course_title = "Unknown Course"
+    
+    courses = list(get_collection('courses').find({}, {'_id': 0}))
+    for c in courses:
+        for ch in c.get('chapters', []):
+            for mod in ch.get('modules', []):
+                if mod['id'] == chapter_id:
+                    lesson_title = mod.get('title', 'Unknown')
+                    course_title = c.get('title', 'Unknown')
+                    break
+                    
+    client = get_openai_client()
+    summary = ""
+    
+    if client:
+        try:
+            prompt = f"Generate a comprehensive, structural, and educational summary for a lesson titled '{lesson_title}' in the course '{course_title}'. Use markdown, bullet points, and highlight key takeaways."
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are an expert AI tutor. Generate a highly educational and structural summary of the requested topic. Ensure the output is formatted beautifully with Markdown."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=800
+            )
+            summary = response.choices[0].message.content
+        except Exception as e:
+            summary = f"Could not generate AI notes. Error: {str(e)}"
+            
+    if not summary:
+        summary = f"## {lesson_title}\n\nHere are your automated AI notes for this module. The notes highlight key takeaways, definitions, and concepts presented in the lesson.\n\n- **Key Takeaway 1**: Understand the core fundamentals of {lesson_title} within {course_title}.\n- **Key Takeaway 2**: Focus on applying these concepts to practical, real-world scenarios.\n- **Next Steps**: Review the material and attempt any associated quizzes or exercises.\n\n> *Note: AI generation is currently offline or unreachable. Please check the API connection for dynamic notes.*"
+        
+    return {"summary": summary}

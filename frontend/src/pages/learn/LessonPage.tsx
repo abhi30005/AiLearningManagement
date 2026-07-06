@@ -21,6 +21,8 @@ import {
   SkipBack,
   SkipForward,
   Globe,
+  Award,
+  Lock,
 } from 'lucide-react'
 
 
@@ -145,64 +147,68 @@ export default function LessonPage() {
   return (
     <div className="flex h-[calc(100vh-120px)]">
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 overflow-y-auto min-w-0 flex flex-col scrollbar-thin relative">
         {/* Media Player Area */}
-        {((currentLesson?.type === 'youtube' || currentLesson?.type === 'video' || getYouTubeId(currentLesson?.url)) && getYouTubeId(currentLesson?.url)) ? (
-          <div className="relative bg-black aspect-video w-full">
-            <iframe
-              className="w-full h-full"
-              src={`https://www.youtube.com/embed/${getYouTubeId(currentLesson.url)}`}
-              allowFullScreen
-              title={currentLesson.title}
-            />
-          </div>
-        ) : (currentLesson?.type === 'website' || currentLesson?.type === 'doc') && currentLesson?.url ? (
-          <div className="relative bg-secondary-100 flex flex-col flex-1 min-h-[500px]">
-             {/* Top bar for opening in new tab if iframe blocked */}
-             <div className="bg-white p-2 border-b border-secondary-200 flex justify-end">
-               <a href={getResourceUrl(currentLesson.url)} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
-                 <Maximize className="w-4 h-4" /> Open in New Tab
-               </a>
-             </div>
-             {isIframeBlocked(currentLesson.url) ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-secondary-50">
-                   <Globe className="w-16 h-16 text-secondary-400 mb-4" />
-                   <h3 className="text-xl font-semibold text-secondary-900 mb-2">External Website</h3>
-                   <p className="text-secondary-600 max-w-md mb-6">
-                      This website does not allow being embedded directly inside other applications. 
-                      Please open it in a new tab to view the content.
-                   </p>
-                   <a href={getResourceUrl(currentLesson.url)} target="_blank" rel="noreferrer" className="btn-primary">
-                     <Maximize className="w-4 h-4 mr-2" /> Open in New Tab
-                   </a>
-                </div>
-             ) : (
-               <iframe
-                  className="w-full h-full flex-1"
-                  src={getResourceUrl(currentLesson.url)}
+        <div className="w-full bg-secondary-900 pt-6 pb-8 shrink-0">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            {((currentLesson?.type === 'youtube' || currentLesson?.type === 'video' || getYouTubeId(currentLesson?.url)) && getYouTubeId(currentLesson?.url)) ? (
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black ring-1 ring-white/10">
+                <iframe
+                  className="absolute inset-0 w-full h-full border-0"
+                  src={`https://www.youtube.com/embed/${getYouTubeId(currentLesson.url)}`}
+                  allowFullScreen
                   title={currentLesson.title}
-               />
-             )}
-          </div>
-        ) : (
-          <div className="relative bg-secondary-900 aspect-video">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <img
-                src={course?.thumbnail || course?.image || "https://images.pexels.com/photos/8566472/pexels-photo-8566472.jpeg?auto=compress&cs=tinysrgb&w=800"}
-                alt="Lesson thumbnail"
-                className="w-full h-full object-cover opacity-50"
-              />
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                <FileText className="w-12 h-12 mb-2 text-secondary-300" />
-                <p className="text-lg font-medium text-secondary-200">No media attached to this lesson.</p>
-                <p className="text-sm text-secondary-400">Please review the content below.</p>
+                />
               </div>
-            </div>
+            ) : (currentLesson?.type === 'website' || currentLesson?.type === 'doc') && currentLesson?.url ? (
+              <div className="relative bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col w-full h-[60vh] ring-1 ring-white/10">
+                 {/* Top bar for opening in new tab if iframe blocked */}
+                 <div className="bg-secondary-50 p-3 border-b border-secondary-200 flex justify-end shrink-0">
+                   <a href={getResourceUrl(currentLesson.url)} target="_blank" rel="noreferrer" className="btn-secondary btn-sm bg-white shadow-sm">
+                     <Maximize className="w-4 h-4" /> Open in New Tab
+                   </a>
+                 </div>
+                 {isIframeBlocked(currentLesson.url) ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white overflow-y-auto">
+                       <Globe className="w-12 h-12 text-secondary-400 mb-4" />
+                       <h3 className="text-xl font-semibold text-secondary-900 mb-2">External Website</h3>
+                       <p className="text-secondary-600 max-w-md mb-6 text-sm">
+                          This website does not allow being embedded directly inside other applications. 
+                          Please open it in a new tab to view the content.
+                       </p>
+                       <a href={getResourceUrl(currentLesson.url)} target="_blank" rel="noreferrer" className="btn-primary">
+                         <Maximize className="w-4 h-4 mr-2" /> Open in New Tab
+                       </a>
+                    </div>
+                 ) : (
+                   <iframe
+                      className="w-full flex-1 min-h-0 border-0"
+                      src={getResourceUrl(currentLesson.url)}
+                      title={currentLesson.title}
+                   />
+                 )}
+              </div>
+            ) : (
+              <div className="relative bg-secondary-800 w-full aspect-video rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <img
+                    src={course?.thumbnail || course?.image || "https://images.pexels.com/photos/8566472/pexels-photo-8566472.jpeg?auto=compress&cs=tinysrgb&w=800"}
+                    alt="Lesson thumbnail"
+                    className="w-full h-full object-cover opacity-40"
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center">
+                    <FileText className="w-12 h-12 mb-3 text-secondary-300" />
+                    <p className="text-lg font-medium text-white">No media attached to this lesson.</p>
+                    <p className="text-sm text-secondary-300 mt-1">Please review the content below.</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Tabs */}
-        <div className="border-b border-secondary-200">
+        <div className="border-b border-secondary-200 sticky top-0 bg-white z-10 shrink-0 shadow-sm">
           <div className="flex">
             {[
               { id: 'content', label: 'Content' },
@@ -214,8 +220,8 @@ export default function LessonPage() {
                 onClick={() => setCurrentTab(tab.id as typeof currentTab)}
                 className={`flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors ${
                   currentTab === tab.id
-                    ? 'text-primary-600 border-b-2 border-primary-600'
-                    : 'text-secondary-600 hover:text-secondary-900'
+                    ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50/50'
+                    : 'text-secondary-600 hover:text-secondary-900 hover:bg-secondary-50'
                 }`}
               >
                 {tab.id === 'notes' && <FileText className="w-4 h-4" />}
@@ -226,7 +232,7 @@ export default function LessonPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+        <div className="flex-1 p-6 shrink-0">
           {currentTab === 'content' && (
             <div className="prose max-w-none">
               <h1 className="text-2xl font-bold text-secondary-900">{currentLesson?.title || 'Lesson'}</h1>
@@ -256,7 +262,9 @@ export default function LessonPage() {
                 </button>
               </div>
               <div className="prose max-w-none bg-secondary-50 rounded-lg p-6">
-                <pre className="whitespace-pre-wrap text-sm text-secondary-700">{notes}</pre>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {notes}
+                </ReactMarkdown>
               </div>
             </div>
           )}
@@ -379,6 +387,24 @@ export default function LessonPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* Final Quiz Section */}
+                <div className="mt-6 pt-4 border-t border-secondary-200">
+                   <h3 className="text-xs font-bold text-secondary-400 uppercase tracking-wider mb-2">
+                     Certification
+                   </h3>
+                   {enrollment?.lessonsCompleted?.length >= lessons.length ? (
+                     <Link to={`/learn/${courseId}/quiz/final`} className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent-50 text-accent-700 transition-colors bg-accent-50/50">
+                       <Award className="w-5 h-5" />
+                       <span className="flex-1 text-sm font-medium">Take Final Quiz</span>
+                     </Link>
+                   ) : (
+                     <div className="flex items-center gap-3 p-3 rounded-lg text-secondary-500 cursor-not-allowed bg-secondary-50/50">
+                       <Lock className="w-5 h-5" />
+                       <span className="flex-1 text-sm">Take Final Quiz (Locked)</span>
+                     </div>
+                   )}
+                </div>
               </div>
             ) : (
               <div className="h-full p-4 flex flex-col">

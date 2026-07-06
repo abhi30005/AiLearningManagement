@@ -75,6 +75,13 @@ class SubmitQuizRequest(BaseModel):
 @router.post("/generate-quiz")
 async def generate_quiz(req: GenerateQuizRequest):
     topic = req.topic or "this concept"
+    
+    if req.course_id:
+        from state_store import get_course
+        course = get_course(req.course_id)
+        if course and course.get("title"):
+            topic = course["title"]
+
     difficulty = req.difficulty or "standard"
     count = max(1, min(8, int(req.numQuestions or 3)))
 

@@ -256,7 +256,20 @@ def list_enrollments(user_id: str | None = None, course_id: str | None = None) -
     q = {}
     if user_id: q['userId'] = user_id
     if course_id: q['courseId'] = course_id
-    return list(get_collection('enrollments').find(q, {'_id': 0}))
+    enrollments = list(get_collection('enrollments').find(q, {'_id': 0}))
+    
+    # Calculate progress dynamically based on completed lessons
+    for enr in enrollments:
+        course = get_course(enr['courseId'])
+        if course:
+            total_lessons = sum(len(ch.get('modules', [])) for ch in course.get('chapters', []))
+            completed = len(enr.get('lessonsCompleted', []))
+            if total_lessons > 0:
+                enr['progress'] = int((completed / total_lessons) * 100)
+            else:
+                enr['progress'] = 0
+                
+    return enrollments
 
 def list_all_enrollments() -> list[dict[str, Any]]:
     return list(get_collection('enrollments').find({}, {'_id': 0}))
@@ -347,13 +360,15 @@ def get_leaderboard(limit: int = 20) -> list[dict[str, Any]]:
     users = list(get_collection('users').find({'role': 'student'}, {'_id': 0}).sort('xp', -1).limit(limit))
     return [_public_user(u) for u in users]
 
-def issue_certificate(user_id: str, title: str, course_id: str | None = None) -> dict[str, Any] | None:
+def issue_certificate(user_id: str, title: str, course_id: str | None = None, student_name: str | None = None, course_name: str | None = None) -> dict[str, Any] | None:
     cert = {
         'id': f'cert-{uuid.uuid4().hex[:8]}',
         'title': title,
         'date': _now_iso(),
         'courseId': course_id,
-        'color': 'primary'
+        'color': 'primary',
+        'studentName': student_name,
+        'courseName': course_name
     }
     get_collection('users').update_one({'id': user_id}, {'$push': {'certificates': cert}})
     return cert
@@ -362,7 +377,10 @@ def issue_course_certificate(user_id: str, course_id: str, score: int) -> dict[s
     if score < 75: return None
     course = get_course(course_id)
     if not course: return None
-    return issue_certificate(user_id, f"Completion: {course.get('title', 'Course')}", course_id)
+    user = get_user_by_id(user_id)
+    student_name = user.get('name', 'Student') if user else 'Student'
+    course_name = course.get('title', 'Course')
+    return issue_certificate(user_id, f"Completion: {course_name}", course_id, student_name, course_name)
 
 def list_certificates(user_id: str) -> list[dict[str, Any]]:
     u = get_user_by_id(user_id)
@@ -479,7 +497,34 @@ def get_student_analytics(user_id: str) -> dict[str, Any]:
     for enr in enrollments:
         course = all_courses.get(enr['courseId'])
         if course:
-            enrolled_courses.append({'id': course['id'], 'title': course['title'], 'progress': enr.get('progress', 0), 'nextLesson': 'Continue Learning', 'thumbnail': course.get('image', 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485')})
+            completed_lessons = enr.get('lessonsCompleted', [])
+            total_lessons = 0
+            next_lesson_title = 'Review Course'
+            next_lesson_id = 'default'
+            found_next = False
+
+            for ch in course.get('chapters', []):
+                for mod in ch.get('modules', []):
+                    total_lessons += 1
+                    if not found_next and mod['id'] not in completed_lessons:
+                        next_lesson_title = mod['title']
+                        next_lesson_id = mod['id']
+                        found_next = True
+            
+            calculated_progress = 0
+            if total_lessons > 0:
+                calculated_progress = int((len(completed_lessons) / total_lessons) * 100)
+            elif enr.get('progress'):
+                calculated_progress = enr['progress']
+                
+            enrolled_courses.append({
+                'id': course['id'], 
+                'title': course['title'], 
+                'progress': calculated_progress, 
+                'nextLesson': next_lesson_title,
+                'nextLessonId': next_lesson_id,
+                'thumbnail': course.get('image', course.get('thumbnail', 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485'))
+            })
     stats = [{'label': 'Courses Enrolled', 'value': str(len(enrolled_courses)), 'icon': 'BookOpen'}, {'label': 'Hours Learned', 'value': str(sum(study_hours)), 'icon': 'Clock', 'trend': 'This week'}, {'label': 'XP Earned', 'value': str(user.get('xp', 0)), 'icon': 'TrendingUp'}, {'label': 'Learning Streak', 'value': f"{user.get('streak', 0)} days", 'icon': 'Flame'}]
     return {'student_id': user['id'], 'xp': int(user.get('xp', 0)), 'studyHours': study_hours, 'study_hours': sum(study_hours), 'quiz_performance': max(60, min(98, int(user.get('xp', 0) / 1200))), 'assignment_score': avg_score, 'enrolledCourses': enrolled_courses, 'recommendedCourses': course_recommendations(user['id']), 'stats': stats, 'weakTopics': [t['topic'] for t in weak_topics(user['id'])], 'recentChats': list_chat_history(user['id']), 'certificates': list_certificates(user['id']), 'allCourses': all_courses_list}
 
