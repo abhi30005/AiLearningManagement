@@ -290,7 +290,7 @@ def update_course_progress(user_id: str, course_id: str, progress: int) -> dict[
     return get_collection('enrollments').find_one({'userId': user_id, 'courseId': course_id}, {'_id': 0})
 
 # ---------------- ASSIGNMENTS & SUBMISSIONS ----------------
-def create_assignment(course_id: str, title: str, description: str, due_date: str, points: int) -> dict[str, Any]:
+def create_assignment(course_id: str, title: str, description: str, due_date: str, points: int, teacher_id: str | None = None, resources: list[str] | None = None, allow_resubmission: bool = True) -> dict[str, Any]:
     a = {
         'id': f'assn-{uuid.uuid4().hex[:8]}',
         'courseId': course_id,
@@ -298,7 +298,9 @@ def create_assignment(course_id: str, title: str, description: str, due_date: st
         'description': description,
         'dueDate': due_date,
         'points': points,
-        'teacherId': get_course(course_id).get('teacherId', settings.DEFAULT_TEACHER_ID),
+        'teacherId': teacher_id or get_course(course_id).get('teacherId', settings.DEFAULT_TEACHER_ID),
+        'resources': resources or [],
+        'allowResubmission': allow_resubmission,
         'createdAt': _now_iso()
     }
     get_collection('assignments').insert_one(deepcopy(a))

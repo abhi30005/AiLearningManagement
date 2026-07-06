@@ -223,21 +223,7 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className="card p-5">
-            <h3 className="text-sm font-semibold text-secondary-900 mb-3 flex items-center gap-2">
-              <Brain className="w-4 h-4 text-primary-500" />
-              Recent AI Chats
-            </h3>
-            <div className="space-y-3">
-              {recentChats.map((chat: any, i: number) => (
-                <div key={i} className="p-2 rounded-lg hover:bg-secondary-50 cursor-pointer">
-                  <p className="text-sm font-medium text-secondary-900">{chat.topic}</p>
-                  <p className="text-xs text-secondary-500 truncate">{chat.message}</p>
-                  <p className="text-xs text-secondary-400 mt-1">{chat.time}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
       </div>
 

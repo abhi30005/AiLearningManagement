@@ -31,6 +31,7 @@ import CertificatesPage from './pages/student/CertificatesPage'
 import TeacherCoursesPage from './pages/teacher/TeacherCoursesPage'
 import TeacherStudentsPage from './pages/teacher/TeacherStudentsPage'
 import TeacherAssignmentsPage from './pages/teacher/TeacherAssignmentsPage'
+import TeacherCreateAssignmentPage from './pages/teacher/TeacherCreateAssignmentPage'
 import TeacherQuizzesPage from './pages/teacher/TeacherQuizzesPage'
 import TeacherResultsPage from './pages/teacher/TeacherResultsPage'
 import TeacherMaterialsPage from './pages/teacher/TeacherMaterialsPage'
@@ -117,6 +118,7 @@ function AppRoutes() {
         <Route path="/teacher/courses" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherCoursesPage /></ProtectedRoute>} />
         <Route path="/teacher/students" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherStudentsPage /></ProtectedRoute>} />
         <Route path="/teacher/assignments" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAssignmentsPage /></ProtectedRoute>} />
+        <Route path="/teacher/assignments/create" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherCreateAssignmentPage /></ProtectedRoute>} />
         <Route path="/teacher/quizzes" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherQuizzesPage /></ProtectedRoute>} />
         <Route path="/teacher/results" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherResultsPage /></ProtectedRoute>} />
         <Route path="/teacher/materials" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMaterialsPage /></ProtectedRoute>} />

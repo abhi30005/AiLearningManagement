@@ -142,6 +142,7 @@ export default function TeacherQuizzesPage() {
                     onChange={(e) => setSelectedCourse(e.target.value)}
                     className="input py-1 px-3 h-auto"
                   >
+                    {courses.length === 0 && <option value="">No courses available</option>}
                     {courses.map(c => (
                       <option key={c.id} value={c.id}>{c.title}</option>
                     ))}

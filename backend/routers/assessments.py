@@ -54,6 +54,7 @@ class AssignmentCreateRequest(BaseModel):
     title: str
     instructions: str = ""
     dueDate: Optional[str] = None
+    points: int = 100
     resources: list[str] = []
     allowResubmission: bool = True
 
@@ -105,13 +106,15 @@ async def generate_quiz(req: GenerateQuizRequest):
     if client:
         try:
             prompt = (
-                f'Generate a {difficulty} multiple choice quiz with exactly {count} questions about "{topic}". '
+                f'Generate a {difficulty} multiple choice quiz with exactly {count} unique and randomized questions about "{topic}". '
+                'Ensure the questions are different every time you are asked. '
                 'Return ONLY a JSON object with a single key "questions" mapped to an array with fields: id, question, options[4], correctAnswerIndex, explanation.'
             )
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
+                temperature=0.9
             )
             parsed = json.loads(response.choices[0].message.content)
             return {"questions": parsed.get("questions", [])}
@@ -145,11 +148,12 @@ async def create_course_assignment(req: AssignmentCreateRequest):
     assignment = create_assignment(
         course_id=req.courseId,
         title=req.title,
-        instructions=req.instructions,
-        due_date=req.dueDate,
+        description=req.instructions,
+        due_date=req.dueDate or "",
+        points=req.points,
         teacher_id=req.teacherId,
         resources=req.resources,
-        allow_resubmission=req.allowResubmission,
+        allow_resubmission=req.allowResubmission
     )
     if not assignment:
         return {"success": False, "message": "Course not found"}
