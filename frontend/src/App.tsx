@@ -20,7 +20,7 @@ import QuizPage from './pages/learn/QuizPage'
 import AssignmentsPage from './pages/learn/AssignmentsPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import AdminUsersPage from './pages/admin/UsersPage'
-import AdminCategoriesPage from './pages/admin/CategoriesPage'
+
 import AdminCoursesPage from './pages/admin/AdminCoursesPage'
 import AdminEnrollmentsPage from './pages/admin/AdminEnrollmentsPage'
 import MyCoursesPage from './pages/student/MyCoursesPage'
