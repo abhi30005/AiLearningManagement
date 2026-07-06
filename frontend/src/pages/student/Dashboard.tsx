@@ -69,7 +69,7 @@ export default function StudentDashboard() {
     Flame
   }
 
-  const { enrolledCourses = [], recommendedCourses = [], stats = [], skills = [], recentChats = [], certificates = [] } = data || {}
+  const { enrolledCourses = [], recommendedCourses = [], stats = [], skills = [], recentChats = [], certificates = [], allCourses = [] } = data || {}
 
   return (
     <div className="space-y-6">
@@ -238,6 +238,43 @@ export default function StudentDashboard() {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Explore All Courses */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-secondary-900">Explore All Courses</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {allCourses.map((course: any) => (
+            <Link key={course.id} to={`/courses/${course.id}`} className="card overflow-hidden group cursor-pointer border border-secondary-100 hover:border-primary-200 transition-all hover:shadow-md flex flex-col">
+              <div className="relative h-32 overflow-hidden bg-secondary-100">
+                <img
+                  src={course.image || course.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80'}
+                  alt={course.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-2 left-2">
+                  <span className="px-1.5 py-0.5 bg-white/90 backdrop-blur-sm rounded text-[10px] font-medium text-secondary-700 shadow-sm">
+                    {course.category || 'General'}
+                  </span>
+                </div>
+              </div>
+              <div className="p-3 flex flex-col flex-1">
+                <h4 className="font-semibold text-sm text-secondary-900 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                  {course.title}
+                </h4>
+                <p className="text-xs text-secondary-600 mt-1 line-clamp-2 mb-3 flex-1">{course.description || 'Learn this amazing course.'}</p>
+                <button 
+                  onClick={(e) => handleQuickEnroll(e, course.id)} 
+                  className="btn-primary w-full py-1.5 text-xs flex justify-center items-center gap-1 mt-auto"
+                >
+                  <Plus className="w-3 h-3" /> Enroll Now
+                </button>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
 

@@ -372,7 +372,13 @@ def weak_topics(user_id: str) -> list[dict[str, Any]]:
     return []
 
 def course_recommendations(user_id: str) -> list[dict[str, Any]]:
-    return []
+    topics = weak_topics(user_id)
+    courses = list_courses()
+    recs = []
+    for index, course in enumerate(courses[:3]):
+        reason_topic = topics[index % len(topics)]['topic'] if topics else course.get('category', 'General')
+        recs.append({'id': course['id'], 'title': course['title'], 'image': course.get('image'), 'thumbnail': course.get('thumbnail'), 'match': f'{94 - index * 4}% AI Match', 'category': course.get('category', 'General'), 'reason': f'Suggested to improve: {reason_topic}'})
+    return recs
 
 # ---------------- MATERIALS, NOTIFICATIONS & CHAT ----------------
 def create_material(course_id: str, chapter_id: str, material_type: str, url: str, title: str) -> dict[str, Any]:
@@ -459,7 +465,23 @@ def get_teacher_students(teacher_id: str) -> list[dict[str, Any]]:
     return [_public_user(u) for u in users]
 
 def get_student_analytics(user_id: str) -> dict[str, Any]:
-    return get_user_stats(user_id)
+    user = get_user_by_id(user_id) or {}
+    if not user:
+        return {}
+    study_hours = list(user.get('studyHours', [0, 0, 0, 0, 0, 0, 0]))
+    submissions = list_submissions(user['id'])
+    graded_scores = [int(s['score']) for s in submissions if isinstance(s.get('score'), int)]
+    avg_score = int(sum(graded_scores) / len(graded_scores)) if graded_scores else 0
+    enrollments = list_enrollments(user['id'])
+    all_courses_list = list_courses()
+    all_courses = {c['id']: c for c in all_courses_list}
+    enrolled_courses = []
+    for enr in enrollments:
+        course = all_courses.get(enr['courseId'])
+        if course:
+            enrolled_courses.append({'id': course['id'], 'title': course['title'], 'progress': enr.get('progress', 0), 'nextLesson': 'Continue Learning', 'thumbnail': course.get('image', 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485')})
+    stats = [{'label': 'Courses Enrolled', 'value': str(len(enrolled_courses)), 'icon': 'BookOpen'}, {'label': 'Hours Learned', 'value': str(sum(study_hours)), 'icon': 'Clock', 'trend': 'This week'}, {'label': 'XP Earned', 'value': str(user.get('xp', 0)), 'icon': 'TrendingUp'}, {'label': 'Learning Streak', 'value': f"{user.get('streak', 0)} days", 'icon': 'Flame'}]
+    return {'student_id': user['id'], 'xp': int(user.get('xp', 0)), 'studyHours': study_hours, 'study_hours': sum(study_hours), 'quiz_performance': max(60, min(98, int(user.get('xp', 0) / 1200))), 'assignment_score': avg_score, 'enrolledCourses': enrolled_courses, 'recommendedCourses': course_recommendations(user['id']), 'stats': stats, 'weakTopics': [t['topic'] for t in weak_topics(user['id'])], 'recentChats': list_chat_history(user['id']), 'certificates': list_certificates(user['id']), 'allCourses': all_courses_list}
 
 def get_teacher_analytics(teacher_id: str) -> dict[str, Any]:
     return {}
