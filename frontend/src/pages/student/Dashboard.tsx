@@ -79,10 +79,10 @@ export default function StudentDashboard() {
           <h1 className="text-2xl font-bold text-secondary-900">{t('common.welcome')}, {user?.full_name?.split(' ')[0] || 'Student'}</h1>
           <p className="text-secondary-600">Keep up the great work! You're making progress.</p>
         </div>
-        <button className="btn-accent">
+        <Link to="/ai-tutor" className="btn-accent">
           <Brain className="w-4 h-4" />
           Open AI Tutor
-        </button>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -242,7 +242,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Explore All Courses */}
-      <div className="mt-8">
+      {/* <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-secondary-900">Explore All Courses</h2>
         </div>
@@ -276,7 +276,7 @@ export default function StudentDashboard() {
             </Link>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Certificates */}
       <div className="card p-6">

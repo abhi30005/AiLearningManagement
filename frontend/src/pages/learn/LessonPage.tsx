@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../lib/language-context'
 import { useAuth } from '../../lib/auth-context'
@@ -400,31 +402,38 @@ function AITutorChat() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4 scrollbar-thin">
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-[80%] p-4 rounded-2xl ${
-                msg.role === 'user'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-secondary-100 text-secondary-900'
-              }`}
-            >
-              {msg.content}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((message, i) => (
+            <div key={i} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] p-3 rounded-xl text-sm ${
+                message.role === 'user' 
+                  ? 'bg-primary-600 text-white rounded-br-sm' 
+                  : 'bg-white border border-secondary-200 text-secondary-900 rounded-bl-sm shadow-sm'
+              }`}>
+                <div className="prose prose-sm max-w-none">
+                  {message.role === 'assistant' ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  ) : (
+                    message.content.split('\n').map((line, j) => (
+                      <p key={j} className="text-white">
+                        {line}
+                      </p>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
-        {isTyping && (
-          <div className="flex justify-start">
-             <div className="max-w-[80%] p-4 rounded-2xl bg-secondary-100 text-secondary-900">
-                ...
-             </div>
-          </div>
-        )}
-      </div>
+          ))}
+          {isTyping && (
+            <div className="flex justify-start">
+               <div className="max-w-[80%] p-4 rounded-2xl bg-secondary-100 text-secondary-900">
+                  ...
+               </div>
+            </div>
+          )}
+        </div>
       <div className="flex gap-2">
         <input
           type="text"

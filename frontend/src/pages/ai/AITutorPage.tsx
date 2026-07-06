@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useLanguage } from '../../lib/language-context'
 import { useAuth } from '../../lib/auth-context'
 import { apiFetch } from '../../lib/api'
@@ -45,6 +47,7 @@ export default function AITutorPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [showHistory] = useState(true)
+  const [sessionId, setSessionId] = useState<string>(Date.now().toString())
   const [chatHistory, setChatHistory] = useState<any[]>([])
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -57,21 +60,39 @@ export default function AITutorPage() {
     scrollToBottom()
   }, [messages])
 
-  useEffect(() => {
+  const fetchHistory = () => {
     if (user?.id) {
-      apiFetch<any>(`/tutor/history/${user.id}`).then(res => {
+      apiFetch<any>(`/tutor/history/${user.id}?limit=100`).then(res => {
         if (res.history) {
-          // Format for sidebar
-          const formatted = res.history.map((h: any) => ({
-            id: h.id,
-            title: h.sender === 'user' ? 'Question' : 'Response',
-            preview: h.message.substring(0, 30) + '...',
-            time: h.createdAt ? h.createdAt.substring(0, 10) : 'Just now'
-          }))
+          // Group by documentId to create sessions
+          const sessionsMap = new Map()
+          
+          res.history.forEach((h: any) => {
+             // Fallback to 'general' if documentId is missing
+             const docId = h.documentId || h.document_id || 'general'
+             if (!sessionsMap.has(docId)) {
+               sessionsMap.set(docId, {
+                 id: docId,
+                 title: h.sender === 'user' ? h.message : 'New Conversation',
+                 messages: []
+               })
+             }
+             if (h.sender === 'user' && sessionsMap.get(docId).title === 'New Conversation') {
+               sessionsMap.get(docId).title = h.message
+             }
+             sessionsMap.get(docId).messages.push(h)
+          })
+          
+          // Convert map to array and reverse to show newest first
+          const formatted = Array.from(sessionsMap.values()).reverse()
           setChatHistory(formatted)
         }
       }).catch(console.error)
     }
+  }
+
+  useEffect(() => {
+    fetchHistory()
   }, [user])
 
   const handleSend = async () => {
@@ -94,7 +115,7 @@ export default function AITutorPage() {
         body: JSON.stringify({
           user_id: user?.id || 'guest',
           message: userMessage.content,
-          document_id: 'general',
+          document_id: sessionId,
           language: language
         })
       })
@@ -107,13 +128,8 @@ export default function AITutorPage() {
       }
       setMessages((prev) => [...prev, aiResponse])
       
-      // Update history
-      setChatHistory([{
-        id: Date.now().toString(),
-        title: 'Question',
-        preview: userMessage.content.substring(0, 30) + '...',
-        time: 'Just now'
-      }, ...chatHistory])
+      // Refetch history to update sidebar
+      fetchHistory()
     } catch (e) {
       console.error(e)
     } finally {
@@ -126,6 +142,7 @@ export default function AITutorPage() {
   }
 
   const handleNewChat = () => {
+    setSessionId(Date.now().toString())
     setMessages([
       {
         id: Date.now().toString(),
@@ -134,6 +151,17 @@ export default function AITutorPage() {
         timestamp: new Date(),
       },
     ])
+  }
+
+  const loadSession = (sessionObj: any) => {
+    setSessionId(sessionObj.id)
+    const sessionMessages = sessionObj.messages.map((m: any) => ({
+      id: m.id || Date.now().toString(),
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.message,
+      timestamp: new Date(m.createdAt || Date.now())
+    }))
+    setMessages(sessionMessages)
   }
 
   return (
@@ -147,17 +175,19 @@ export default function AITutorPage() {
           </button>
 
           <h3 className="text-sm font-medium text-secondary-600 mb-3">{t('aiTutor.chatHistory')}</h3>
-          <div className="space-y-2">
+          <div className="space-y-1">
             {chatHistory.map((chat) => (
               <button
                 key={chat.id}
-                className="w-full flex items-start gap-2 p-3 rounded-lg hover:bg-secondary-50 text-left transition-colors"
+                onClick={() => loadSession(chat)}
+                className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors group ${
+                  sessionId === chat.id ? 'bg-secondary-100 text-secondary-900' : 'hover:bg-secondary-50 text-secondary-700'
+                }`}
               >
-                <MessageSquare className="w-4 h-4 text-secondary-400 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-secondary-900 truncate">{chat.title}</p>
-                  <p className="text-xs text-secondary-500 truncate">{chat.preview}</p>
-                  <p className="text-xs text-secondary-400">{chat.time}</p>
+                <MessageSquare className="w-4 h-4 text-secondary-500 flex-shrink-0" />
+                <span className="flex-1 text-sm truncate">{chat.title}</span>
+                <div className="opacity-0 group-hover:opacity-100 flex items-center" onClick={(e) => e.stopPropagation()}>
+                  <Trash2 className="w-4 h-4 text-secondary-400 hover:text-error-500 transition-colors" />
                 </div>
               </button>
             ))}
@@ -218,11 +248,17 @@ export default function AITutorPage() {
                 } p-4`}
               >
                 <div className="prose prose-sm max-w-none">
-                  {message.content.split('\n').map((line, i) => (
-                    <p key={i} className={message.role === 'user'? 'text-white' : ''}>
-                      {line}
-                    </p>
-                  ))}
+                  {message.role === 'assistant' ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  ) : (
+                    message.content.split('\n').map((line, i) => (
+                      <p key={i} className="text-white">
+                        {line}
+                      </p>
+                    ))
+                  )}
                 </div>
                 {message.role === 'assistant' && (
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-secondary-100">

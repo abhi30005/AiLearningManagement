@@ -43,6 +43,29 @@ async def chat_with_tutor(data: ChatRequest):
         sender="user",
     )
     
+    from database import get_collection
+    # Simple RAG simulation: pull student's enrolled courses to provide context
+    enrollments = list(get_collection('enrollments').find({'userId': data.user_id}, {'_id': 0}))
+    course_ids = [e['courseId'] for e in enrollments]
+    courses = list(get_collection('courses').find({'id': {'$in': course_ids}}, {'_id': 0}))
+    
+    context = "User's Enrolled Courses Context:\\n"
+    for c in courses:
+        context += f"- Course: {c['title']} (Category: {c.get('category', 'N/A')}). Description: {c.get('description', '')[:200]}\\n"
+        for ch in c.get('chapters', []):
+            context += f"  * Chapter: {ch['title']}\\n"
+    
+    system_prompt = (
+        f"You are an expert AI tutor with deep knowledge. Respond in {data.language}. "
+        "You must answer ANY type of question the student asks with extreme accuracy and deep knowledge.\\n\\n"
+        "CRITICAL INSTRUCTIONS:\\n"
+        "1. Make your message highly STRUCTURAL and WELL ALIGNED (use markdown, headers, bold text, bullet points).\\n"
+        "2. Keep your answers concise: short to medium length (not too large), getting straight to the point while remaining highly knowledgeable.\\n"
+        "3. Provide a clear, direct, insightful answer, followed by an example if applicable.\\n"
+        "4. Use the following context about the student's enrolled courses to personalize your answer if relevant.\\n\\n"
+        f"CONTEXT:\\n{context}"
+    )
+
     client = get_openai_client()
     ai_response_text = ""
     
@@ -50,16 +73,19 @@ async def chat_with_tutor(data: ChatRequest):
         try:
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "system", "content": f"You are a helpful AI tutor. Respond in {data.language}. Keep it concise, provide a key idea, an example, and a next practice step."}, {"role": "user", "content": data.message}]
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": data.message}],
+                temperature=0.7,
+                max_tokens=500
             )
             ai_response_text = response.choices[0].message.content or ""
-        except Exception:
-            pass
+        except Exception as e:
+            ai_response_text = f"Error from OpenAI: {str(e)}"
             
     if not ai_response_text:
         ai_response_text = (
             f"I reviewed your question: \"{data.message}\". "
-            f"Here is a focused explanation in {data.language}, with the key idea, an example, and a next practice step."
+            f"However, my AI connection is currently offline. "
+            "Please check your API key and connection."
         )
     save_chat_message(
         user_id=data.user_id,
@@ -68,7 +94,7 @@ async def chat_with_tutor(data: ChatRequest):
         sender="ai",
     )
     
-    return {"response": ai_response_text, "citations": ["doc1_page2"]}
+    return {"response": ai_response_text, "citations": ["Course Database"]}
 
 
 @router.get("/history/{user_id}")
