@@ -312,13 +312,21 @@ def list_assignments(course_id: str | None = None, teacher_id: str | None = None
     if teacher_id: q['teacherId'] = teacher_id
     return list(get_collection('assignments').find(q, {'_id': 0}))
 
-def create_submission(user_id: str, course_id: str, title: str, submission_text: str) -> dict[str, Any]:
+def update_assignment(assignment_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    get_collection('assignments').update_one({'id': assignment_id}, {'$set': updates})
+    return get_collection('assignments').find_one({'id': assignment_id}, {'_id': 0})
+
+def create_submission(user_id: str, course_id: str, title: str, submission_text: str, file_url: str = "", question: str = "", student_name: str = "", assignment_id: str = "") -> dict[str, Any]:
     s = {
         'id': f'sub-{uuid.uuid4().hex[:8]}',
         'userId': user_id,
         'courseId': course_id,
+        'assignmentId': assignment_id,
         'title': title,
         'submissionText': submission_text,
+        'fileUrl': file_url,
+        'question': question,
+        'studentName': student_name,
         'submittedAt': _now_iso(),
         'status': 'pending',
         'score': 0,

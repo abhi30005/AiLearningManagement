@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../lib/api'
-import { BarChart2, TrendingUp, Award } from 'lucide-react'
+import { useAuth } from '../../lib/auth-context'
+import { BarChart2, TrendingUp, Award, CheckCircle } from 'lucide-react'
 import { PageLoader } from '../../components/ui/PageLoader'
 
 export default function TeacherResultsPage() {
+  const { user } = useAuth()
   const [submissions, setSubmissions] = useState<any[]>([])
+  const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchResults = async () => {
+      if (!user) return
       try {
-        const data = await apiFetch<any>('/assessments/submissions')
-        setSubmissions(data.submissions || [])
+        const [subData, coursesData] = await Promise.all([
+          apiFetch<any>('/assessments/submissions'),
+          apiFetch<any[]>(`/courses/teacher/${user.id}`)
+        ])
+        setSubmissions(subData.submissions || [])
+        setCourses(coursesData || [])
       } catch (err) {
         console.error(err)
       } finally {
@@ -19,10 +27,24 @@ export default function TeacherResultsPage() {
       }
     }
     fetchResults()
-  }, [])
+  }, [user])
 
   if (loading) {
     return <PageLoader type="list" />
+  }
+
+  const handlePublishGrades = async (courseId: string) => {
+    try {
+      const res = await apiFetch<any>(`/courses/${courseId}/publish-grades`, {
+        method: 'POST'
+      })
+      if (res.success) {
+        setCourses(courses.map(c => c.id === courseId ? res.course : c))
+      }
+    } catch (error) {
+      console.error(error)
+      alert("Failed to publish grades.")
+    }
   }
 
   // Calculate simple stats
@@ -111,6 +133,60 @@ export default function TeacherResultsPage() {
                     </td>
                     <td className="py-3 px-4 text-secondary-900 font-semibold">
                       {sub.score ? `${sub.score}%` : '-'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card overflow-hidden mt-8">
+        <div className="p-4 border-b border-secondary-200">
+          <h3 className="font-semibold text-secondary-900">Publish Course Grade Cards</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-secondary-50 border-b border-secondary-200">
+                <th className="py-3 px-4 text-sm font-medium text-secondary-900">Course</th>
+                <th className="py-3 px-4 text-sm font-medium text-secondary-900">Category</th>
+                <th className="py-3 px-4 text-sm font-medium text-secondary-900">Status</th>
+                <th className="py-3 px-4 text-sm font-medium text-secondary-900">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-secondary-200">
+              {courses.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-8 px-6 text-center text-secondary-500">
+                    No courses found.
+                  </td>
+                </tr>
+              ) : (
+                courses.map((course, i) => (
+                  <tr key={i} className="hover:bg-secondary-50 transition-colors">
+                    <td className="py-3 px-4 font-medium text-secondary-900">{course.title}</td>
+                    <td className="py-3 px-4 text-secondary-600">{course.category}</td>
+                    <td className="py-3 px-4">
+                      {course.gradesPublished ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-accent-100 text-accent-700">
+                          <CheckCircle className="w-3 h-3" /> Published
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-warning-100 text-warning-700">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <button 
+                        onClick={() => handlePublishGrades(course.id)}
+                        disabled={course.gradesPublished}
+                        className={`btn-primary py-1 px-3 text-sm ${course.gradesPublished ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        Publish Grade Card
+                      </button>
                     </td>
                   </tr>
                 ))

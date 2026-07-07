@@ -46,6 +46,7 @@ class CourseUpdateReq(BaseModel):
     thumbnail: Optional[str] = None
     image: Optional[str] = None
     chapters: Optional[list[dict]] = None
+    gradesPublished: Optional[bool] = None
 
 
 class ChapterCreateReq(BaseModel):
@@ -133,6 +134,13 @@ async def update_course(course_id: str, req: CourseUpdateReq):
     if not updates:
         return {"success": True, "course": get_course(course_id)}
     updated = update_course_record(course_id, updates)
+    return {"success": True, "course": updated}
+
+@router.post("/{course_id}/publish-grades")
+async def publish_grades(course_id: str):
+    if not get_course(course_id):
+        raise HTTPException(status_code=404, detail="Course not found")
+    updated = update_course_record(course_id, {"gradesPublished": True})
     return {"success": True, "course": updated}
 
 

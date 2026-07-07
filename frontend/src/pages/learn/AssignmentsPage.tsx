@@ -26,13 +26,15 @@ export default function AssignmentsPage() {
   useEffect(() => {
     const fetchAssignments = async () => {
       try {
-        const [asgRes, subRes] = await Promise.all([
+        const [asgRes, subRes, coursesRes] = await Promise.all([
           apiFetch<any>('/assessments/assignments'),
-          apiFetch<any>(`/assessments/submissions?user_id=${user?.id || ''}`)
+          apiFetch<any>(`/assessments/submissions?user_id=${user?.id || ''}`),
+          apiFetch<any[]>('/courses/')
         ])
         
         const allAssignments = asgRes.assignments || []
         const userSubmissions = subRes.submissions || []
+        const courses = coursesRes || []
         
         const merged = allAssignments.map((a: any) => {
           const sub = userSubmissions.find((s: any) => s.courseId === a.courseId && s.title === a.title) // In real app, match by assignmentId
@@ -46,7 +48,7 @@ export default function AssignmentsPage() {
           
           return {
             ...a,
-            course: a.courseId,
+            course: courses.find((c: any) => c.id === a.courseId)?.title || a.courseId,
             status,
             score: sub?.score,
             feedback: sub?.feedback,
@@ -204,7 +206,10 @@ export default function AssignmentsPage() {
 
                 <div className="flex items-center gap-2">
                   {(assignment.status === 'pending' || assignment.status === 'late') && user?.role === 'student' && (
-                    <button className="btn-primary">
+                    <button 
+                      onClick={() => setSelectedAssignment(selectedAssignment === assignment.id ? null : assignment.id)}
+                      className="btn-primary"
+                    >
                       <Upload className="w-4 h-4" />
                       Submit
                     </button>
@@ -220,6 +225,93 @@ export default function AssignmentsPage() {
                   </button>
                 </div>
               </div>
+
+              {selectedAssignment === assignment.id && (
+                <div className="mt-4 pt-4 border-t border-secondary-100 animate-in fade-in slide-in-from-top-2">
+                  <h4 className="font-medium text-secondary-900 mb-2">Instructions</h4>
+                  <p className="text-secondary-600 text-sm mb-4 whitespace-pre-wrap">{assignment.description || 'No additional instructions provided.'}</p>
+                  
+                  {(assignment.status === 'pending' || assignment.status === 'late') && user?.role === 'student' && (
+                     <div className="space-y-3">
+                        <textarea 
+                          className="input w-full h-32 resize-none" 
+                          placeholder="Type your submission here..."
+                          id={`submission-${assignment.id}`}
+                        ></textarea>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-1">Upload File / Link</label>
+                          <input 
+                            type="text" 
+                            className="input w-full" 
+                            placeholder="Enter file URL (e.g., Google Drive link)"
+                            id={`fileUrl-${assignment.id}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-1">Question to Teacher (Optional)</label>
+                          <textarea 
+                            className="input w-full h-20 resize-none" 
+                            placeholder="Ask any question about this assignment..."
+                            id={`question-${assignment.id}`}
+                          ></textarea>
+                        </div>
+                        
+                        <div className="flex justify-end gap-2 pt-2">
+                           <button 
+                             onClick={() => setSelectedAssignment(null)} 
+                             className="btn-secondary"
+                           >
+                             Cancel
+                           </button>
+                           <button 
+                             onClick={async () => {
+                               const submissionText = (document.getElementById(`submission-${assignment.id}`) as HTMLTextAreaElement)?.value;
+                               const fileUrl = (document.getElementById(`fileUrl-${assignment.id}`) as HTMLInputElement)?.value;
+                               const question = (document.getElementById(`question-${assignment.id}`) as HTMLTextAreaElement)?.value;
+                               
+                               if(!submissionText && !fileUrl) {
+                                  alert("Please provide a submission text or file link.");
+                                  return;
+                               }
+                               try {
+                                 await apiFetch('/assessments/submit-assignment', {
+                                   method: 'POST',
+                                   body: JSON.stringify({
+                                      assignmentId: assignment.id,
+                                      userId: user?.id,
+                                      courseId: assignment.courseId,
+                                      title: assignment.title,
+                                      submissionText,
+                                      fileUrl,
+                                      question,
+                                      studentName: user?.full_name || user?.name || 'Student'
+                                   })
+                                 });
+                                 // Optimistic update
+                                 const updatedAssignments = [...assignments];
+                                 const idx = updatedAssignments.findIndex(a => a.id === assignment.id);
+                                 if (idx > -1) {
+                                   updatedAssignments[idx].status = 'submitted';
+                                   updatedAssignments[idx].submittedAt = new Date().toISOString();
+                                 }
+                                 setAssignments(updatedAssignments);
+                                 setSelectedAssignment(null);
+                               } catch (error) {
+                                 console.error('Failed to submit assignment:', error);
+                               }
+                             }}
+                             className="btn-primary"
+                           >
+                             <CheckCircle className="w-4 h-4" />
+                             Submit Assignment
+                           </button>
+                        </div>
+                     </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}

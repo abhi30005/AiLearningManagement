@@ -46,6 +46,18 @@ class SubmitAssignmentRequest(BaseModel):
     courseId: str = ""
     title: str = "Untitled Assignment"
     submissionText: str = ""
+    fileUrl: str = ""
+    question: str = ""
+    studentName: str = ""
+    assignmentId: str = ""
+
+class AssignmentUpdateRequest(BaseModel):
+    title: str
+    instructions: str = ""
+    dueDate: Optional[str] = None
+    points: int = 100
+    resources: list[str] = []
+    allowResubmission: bool = True
 
 
 class AssignmentCreateRequest(BaseModel):
@@ -172,9 +184,22 @@ async def submit_assignment(req: SubmitAssignmentRequest):
         course_id=req.courseId,
         title=req.title,
         submission_text=req.submissionText,
+        file_url=req.fileUrl,
+        question=req.question,
+        student_name=req.studentName,
+        assignment_id=req.assignmentId
     )
     return {"success": True, "assignment": assignment}
 
+@router.put("/assignments/{assignment_id}")
+async def update_course_assignment(assignment_id: str, req: AssignmentUpdateRequest):
+    from state_store import update_assignment
+    updates = req.dict(exclude_unset=True) if hasattr(req, "dict") else req.model_dump(exclude_unset=True)
+    updated = update_assignment(assignment_id, updates)
+    if not updated:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return {"success": True, "assignment": updated}
 
 @router.get("/submissions")
 async def get_assignment_submissions(user_id: str | None = None):
