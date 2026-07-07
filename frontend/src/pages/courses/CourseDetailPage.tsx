@@ -54,6 +54,20 @@ export default function CourseDetailPage() {
     fetchCourse()
   }, [id, user])
 
+  const handleEnroll = async () => {
+    if (!user) return
+    try {
+      await apiFetch('/enrollments/', {
+        method: 'POST',
+        body: JSON.stringify({ userId: user.id, courseId: id })
+      })
+      // Update enrollment state after successful enrollment
+      setEnrollment({ progress: 0, courseId: id })
+    } catch (error) {
+      console.error('Enrollment failed', error)
+    }
+  }
+
   if (loading) {
     return <PageLoader type="detail" />
   }
@@ -272,6 +286,7 @@ export default function CourseDetailPage() {
               <span className="text-3xl font-bold text-accent-600">Free</span>
             </div>
 
+            {enrollment ? (
               <Link
                 to={`/learn/${id}/lesson/${(courseData.chapters || courseData.modules)?.[0]?.modules?.[0]?.id || '1'}`}
                 className="btn-primary w-full mb-4"
@@ -279,6 +294,15 @@ export default function CourseDetailPage() {
                 <PlayCircle className="w-5 h-5" />
                 {t('courses.continueLearning')}
               </Link>
+            ) : (
+              <button
+                onClick={handleEnroll}
+                className="btn-primary w-full mb-4"
+              >
+                <PlayCircle className="w-5 h-5" />
+                Enrollment
+              </button>
+            )}
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-3 text-secondary-600">
