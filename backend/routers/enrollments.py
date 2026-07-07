@@ -26,7 +26,7 @@ async def get_enrollments():
         enr['userName'] = user['name'] if user else enr['userId']
         enr['userEmail'] = user['email'] if user else 'N/A'
         enr['courseTitle'] = course['title'] if course else enr['courseId']
-        enr['enrolledAt'] = enr.get('createdAt')
+        enr['enrolledAt'] = enr.get('enrolledAt') or enr.get('createdAt')
         result.append(enr)
     return {"enrollments": result}
 

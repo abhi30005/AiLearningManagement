@@ -272,7 +272,7 @@ def list_enrollments(user_id: str | None = None, course_id: str | None = None) -
     return enrollments
 
 def list_all_enrollments() -> list[dict[str, Any]]:
-    return list(get_collection('enrollments').find({}, {'_id': 0}))
+    return list_enrollments()
 
 def delete_enrollment(enrollment_id: str) -> bool:
     e = get_collection('enrollments').find_one({'id': enrollment_id})
